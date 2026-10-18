@@ -24,3 +24,13 @@ Thumbs.db
 
 # Claude Code (ajustes locales de este PC)
 .claude/settings.local.json
+
+# Vite, TanStack Router y Vitest 5
+.vite/
+*.local
+.tanstack/
+.vitest/
+blob-report/
+
+# Datos locales de volúmenes de Docker montados con bind
+infra/**/data/

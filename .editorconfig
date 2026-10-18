@@ -10,3 +10,7 @@ trim_trailing_whitespace = true
 
 [*.md]
 trim_trailing_whitespace = false
+
+# Caddy formatea sus Caddyfile con tabuladores (caddy fmt)
+[Caddyfile*]
+indent_style = tab

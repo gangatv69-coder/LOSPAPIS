@@ -1,0 +1,7 @@
+{
+  "name": "@los-papis/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Esquema, migraciones y roles de PostgreSQL. Vacío hasta LP-02."
+}

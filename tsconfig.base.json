@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    // Rigor (strict ya es true en TS 6; se deja explícito)
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+
+    // ESM tal cual: solo sintaxis borrable (lo mismo que exige Node 26) e imports de tipos explícitos
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+
+    // Lenguaje (Vite ignora target; shared también corre en Safari del iPad)
+    "target": "ES2024",
+    "lib": ["ES2024"],
+    "useDefineForClassFields": true,
+
+    // Solo comprobamos tipos: nadie emite JS con tsc
+    "noEmit": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+
+    // TS 6: types ya es [] por defecto; cada paquete añade los suyos (node, vite/client)
+    "types": []
+  }
+}
