@@ -1,0 +1,43 @@
+{
+  "nav": {
+    "label": "Navegación principal",
+    "skipToContent": "Saltar al contenido",
+    "register": "Caja",
+    "close": "Cierre",
+    "dashboard": "Panel",
+    "settings": "Ajustes"
+  },
+  "language": {
+    "label": "Idioma",
+    "es": "Español",
+    "it": "Italiano"
+  },
+  "theme": {
+    "toLight": "Pasar a modo claro",
+    "toDark": "Pasar a modo oscuro"
+  },
+  "status": {
+    "title": "Estado del sistema",
+    "subtitle": "Lo que responde el servidor en /api/health, actualizado cada {{seconds}} s."
+  },
+  "health": {
+    "title": "Servidor",
+    "checking": "Comprobando…",
+    "unreachable": "El servidor no responde",
+    "retry": "Reintentar",
+    "online": "En línea",
+    "status": "Estado",
+    "version": "Versión",
+    "time": "Hora de Roma",
+    "uptime": "En marcha desde hace",
+    "uptimeValue": "{{hours}} h {{minutes}} min {{seconds}} s",
+    "updatedAt": "Actualizado a las {{time}}"
+  },
+  "placeholder": {
+    "comingSoon": "Esta pantalla llega en un ticket posterior."
+  },
+  "notFound": {
+    "title": "Página no encontrada",
+    "backHome": "Volver al inicio"
+  }
+}

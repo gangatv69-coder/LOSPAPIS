@@ -1,8 +1,4 @@
 {
   "files": [],
-  "references": [
-    { "path": "packages/shared" },
-    { "path": "apps/api" }
-    // Fase 3 (apps/web) añade aquí: { "path": "apps/web" }
-  ]
+  "references": [{ "path": "packages/shared" }, { "path": "apps/api" }, { "path": "apps/web" }]
 }

@@ -1,0 +1,10 @@
+{
+  "files": [],
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }],
+  "compilerOptions": {
+    // La CLI de shadcn lee el alias de ESTE archivo (sin baseUrl, deprecado en TS 6).
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}

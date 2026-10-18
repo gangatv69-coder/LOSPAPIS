@@ -59,3 +59,6 @@ catalog:
   '@testing-library/jest-dom': 7.0.1
   '@testing-library/user-event': 14.6.8
   '@playwright/test': 1.64.1
+
+minimumReleaseAgeExclude:
+  - shadcn@4.22.1

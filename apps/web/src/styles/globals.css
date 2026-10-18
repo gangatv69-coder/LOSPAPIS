@@ -1,0 +1,161 @@
+/*
+ * Hoja de entrada de Tailwind 4 + shadcn 4.22 (estilo radix-nova) con la paleta LOS PAPIS.
+ * Orden: imports -> @custom-variant -> @theme (literales) -> @theme inline (semánticos) -> :root/.dark -> @layer base
+ */
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Modo oscuro por clase en <html class="dark"> en lugar de prefers-color-scheme. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Tokens con valor literal (no cambian entre claro y oscuro).
+ * @theme "normal": genera utilidades (font-sans, font-display, bg-brand-yellow, text-brand-blue, ...)
+ * y las variables --font-sans, --color-brand-yellow, ... Redefinir --font-sans cambia la fuente del body.
+ */
+@theme {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-display: "Barlow Condensed", "Arial Narrow", ui-sans-serif, sans-serif;
+
+  --color-brand-yellow: #fcd116;
+  --color-brand-yellow-foreground: #111216;
+  --color-brand-blue: #003893;
+  --color-brand-blue-foreground: #ffffff;
+  --color-brand-red: #ce1126;
+  --color-brand-red-foreground: #ffffff;
+}
+
+/*
+ * Tokens semánticos de shadcn. Referencian variables que cambian bajo .dark,
+ * por eso van en @theme inline: la utilidad emite var(--background) tal cual
+ * y se resuelve en el elemento, no donde se definió el tema.
+ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* Modo claro: paleta LOS PAPIS sobre fondo neutro (panel-manager-pc.png) */
+:root {
+  color-scheme: light;
+  --radius: 0.625rem;
+  --background: #f4f5f7;
+  --foreground: #121318;
+  --card: #ffffff;
+  --card-foreground: #121318;
+  --popover: #ffffff;
+  --popover-foreground: #121318;
+  --primary: #fcd116;
+  --primary-foreground: #111216;
+  --secondary: #003893;
+  --secondary-foreground: #ffffff;
+  --muted: #f4f5f7;
+  --muted-foreground: #5b6170;
+  --accent: #f4f5f7;
+  --accent-foreground: #121318;
+  --destructive: #ce1126;
+  --destructive-foreground: #ffffff;
+  --border: #e3e5ea;
+  --input: #e3e5ea;
+  --ring: #003893;
+  --chart-1: #003893;
+  --chart-2: #fcd116;
+  --chart-3: #ce1126;
+  --chart-4: #5b6170;
+  --chart-5: #121318;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #121318;
+  --sidebar-primary: #fcd116;
+  --sidebar-primary-foreground: #111216;
+  --sidebar-accent: #f4f5f7;
+  --sidebar-accent-foreground: #121318;
+  --sidebar-border: #e3e5ea;
+  --sidebar-ring: #003893;
+}
+
+/* Modo oscuro: la caja (caja-cobro-ipad.png, caja-cierre-ipad.png) */
+.dark {
+  color-scheme: dark;
+  --background: #0e0f12;
+  --foreground: #f4f4f1;
+  --card: #16181d;
+  --card-foreground: #f4f4f1;
+  --popover: #1e2128;
+  --popover-foreground: #f4f4f1;
+  --primary: #fcd116;
+  --primary-foreground: #111216;
+  --secondary: #003893;
+  --secondary-foreground: #ffffff;
+  --muted: #1e2128;
+  --muted-foreground: #a6abb5;
+  --accent: #1e2128;
+  --accent-foreground: #f4f4f1;
+  --destructive: #ce1126;
+  --destructive-foreground: #ffffff;
+  --border: #23262e;
+  --input: #2a2e37;
+  --ring: #fcd116;
+  --chart-1: #fcd116;
+  --chart-2: #003893;
+  --chart-3: #ce1126;
+  --chart-4: #a6abb5;
+  --chart-5: #f4f4f1;
+  --sidebar: #16181d;
+  --sidebar-foreground: #f4f4f1;
+  --sidebar-primary: #fcd116;
+  --sidebar-primary-foreground: #111216;
+  --sidebar-accent: #1e2128;
+  --sidebar-accent-foreground: #f4f4f1;
+  --sidebar-border: #23262e;
+  --sidebar-ring: #fcd116;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    /* Cifras de ancho fijo en toda la app (importes, horas). Es lo que hace la utilidad `tabular-nums`. */
+    font-variant-numeric: tabular-nums;
+  }
+}

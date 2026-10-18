@@ -1,0 +1,43 @@
+{
+  "nav": {
+    "label": "Navigazione principale",
+    "skipToContent": "Vai al contenuto",
+    "register": "Cassa",
+    "close": "Chiusura",
+    "dashboard": "Pannello",
+    "settings": "Impostazioni"
+  },
+  "language": {
+    "label": "Lingua",
+    "es": "Español",
+    "it": "Italiano"
+  },
+  "theme": {
+    "toLight": "Passa alla modalità chiara",
+    "toDark": "Passa alla modalità scura"
+  },
+  "status": {
+    "title": "Stato del sistema",
+    "subtitle": "Ciò che risponde il server su /api/health, aggiornato ogni {{seconds}} s."
+  },
+  "health": {
+    "title": "Server",
+    "checking": "Verifica in corso…",
+    "unreachable": "Il server non risponde",
+    "retry": "Riprova",
+    "online": "In linea",
+    "status": "Stato",
+    "version": "Versione",
+    "time": "Ora di Roma",
+    "uptime": "In funzione da",
+    "uptimeValue": "{{hours}} h {{minutes}} min {{seconds}} s",
+    "updatedAt": "Aggiornato alle {{time}}"
+  },
+  "placeholder": {
+    "comingSoon": "Questa schermata arriva in un ticket successivo."
+  },
+  "notFound": {
+    "title": "Pagina non trovata",
+    "backHome": "Torna all'inizio"
+  }
+}
