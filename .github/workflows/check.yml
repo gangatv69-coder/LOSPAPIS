@@ -1,0 +1,82 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Solo lectura: nada en este flujo escribe en el repositorio.
+permissions:
+  contents: read
+
+# Si llegan varios cambios seguidos a la misma rama, se cancela la ejecución anterior.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: pnpm check
+    # Fijado a propósito: ubuntu-latest pasa de 24.04 a 26.04 entre el 19-10-2026 y el 19-11-2026.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Código
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # Sin `version`: toma la de `packageManager` (pnpm@12.14.0) del package.json raíz.
+      - name: pnpm
+        uses: pnpm/action-setup@v6
+
+      # Debe ir DESPUÉS de instalar pnpm: `cache: pnpm` ejecuta `pnpm store path`.
+      - name: Node 26 y caché del store de pnpm
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Dependencias
+        run: pnpm install --frozen-lockfile
+
+      # La versión exacta de @playwright/test instalada (1.64.1): es la clave de la caché de navegadores.
+      - name: Versión de Playwright
+        id: playwright
+        run: |
+          echo "version=$(node -p "require('./apps/web/node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      # Playwright guarda los navegadores en ~/.cache/ms-playwright (Linux). La clave cambia con cada
+      # versión de Playwright, así que nunca se restaura un Chromium de otra versión.
+      - name: Caché de navegadores de Playwright
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      # Sin caché: Chromium + dependencias del sistema de Ubuntu. @playwright/test vive en apps/web, por eso el --filter.
+      - name: Navegador de Playwright
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter @los-papis/web exec playwright install --with-deps chromium
+
+      # Con caché: los paquetes apt no se cachean, así que las dependencias del sistema se instalan igualmente.
+      - name: Dependencias del sistema de Playwright
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter @los-papis/web exec playwright install-deps chromium
+
+      # Biome, tipos, Vitest y Playwright, en ese orden; para al primer fallo.
+      - name: pnpm check
+        run: pnpm check
+
+      - name: Informe de Playwright (solo si algo falla)
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+          if-no-files-found: ignore
+          retention-days: 7

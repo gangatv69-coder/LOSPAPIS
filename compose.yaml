@@ -1,0 +1,57 @@
+# Compose de LOS PAPIS (nombre canónico: compose.yaml; "version:" ya no se usa).
+# Local: docker compose up --build  ->  http://localhost:8080
+# Los dos servicios hablan por la red interna que Compose crea para el proyecto (los-papis_default):
+# solo "web" publica un puerto al PC. La base de datos (LP-02) se añadirá aquí como servicio "db".
+name: los-papis
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+      args:
+        APP_VERSION: 0.1.0
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      LOG_LEVEL: info
+    # Node no está pensado para ser PID 1: un init reenvía señales y recoge zombis
+    init: true
+    restart: unless-stopped
+    healthcheck:
+      # node:26-slim no trae curl ni wget: se usa el fetch global de Node
+      test:
+        - CMD
+        - node
+        - "-e"
+        - "fetch('http://127.0.0.1:3000/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/web.Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      # http://localhost:8080 (y desde el iPad: http://IP-del-PC:8080). 80 y 443 no se usan en local.
+      - "8080:8080"
+    restart: unless-stopped
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    healthcheck:
+      # caddy:2-alpine trae curl en /usr/bin/curl (comprobado en la imagen 2.11.7)
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  caddy_data:
+  caddy_config:

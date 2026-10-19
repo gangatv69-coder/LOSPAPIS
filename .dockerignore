@@ -1,0 +1,21 @@
+# Lo que NO se envía al contexto de build (se instala o compila dentro de la imagen).
+# Imprescindible en Windows: sin esto `COPY . .` arrastraría node_modules (junctions de pnpm,
+# binarios win32) y los .env. NO excluir apps/web/src/routeTree.gen.ts ni pnpm-lock.yaml.
+.git
+.github
+.claude
+.vscode
+**/node_modules
+**/dist
+**/coverage
+**/test-results
+**/playwright-report
+**/blob-report
+**/.vitest
+**/.tanstack
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+!**/.env.example
+docs
+*.md

@@ -1,0 +1,30 @@
+# Caddy para desarrollo local (docker compose up). HTTP plano, sin TLS.
+# ":8080" escucha en todas las interfaces y sin filtro de Host: sirve para
+# http://localhost:8080 y para el iPad en http://IP-del-PC:8080.
+:8080 {
+	encode
+
+	# Salud del propio contenedor web (compose.yaml -> healthcheck)
+	handle /healthz {
+		respond 200
+	}
+
+	# La API, en el servicio "api" de Compose. "handle" NO quita el prefijo:
+	# la API responde en /api/... (Hono monta el sub-router de salud en /api).
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+
+	# La SPA de Vite (apps/web/dist copiado a /srv)
+	handle {
+		root * /srv
+		# Los ficheros con hash de Vite (dist/assets) pueden cachearse para siempre
+		header /assets/* Cache-Control "public, max-age=31536000, immutable"
+		# route fuerza el orden: la cabecera de index.html se aplica DESPUÉS de la reescritura
+		route {
+			try_files {path} /index.html
+			header /index.html Cache-Control "no-cache"
+		}
+		file_server
+	}
+}
