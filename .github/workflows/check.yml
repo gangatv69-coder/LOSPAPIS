@@ -133,6 +133,10 @@ jobs:
       - name: Cobros (LP-09) protegidos
         run: test "$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:8080/api/sales/day)" = 401
 
+      # El visor de auditoría exige la sesión de un manager: sin cookie responde 401.
+      - name: Auditoría (LP-10) protegida
+        run: test "$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:8080/api/audit)" = 401
+
       - name: Manifiesto de la PWA
         run: curl -fsSI http://localhost:8080/manifest.webmanifest
 

@@ -48,7 +48,12 @@ export type AuditAction =
   | 'photo.uploaded'
   // Cobro en la caja (LP-09). El actor de `sale.created` es el manager que firmó con su PIN.
   | 'sale.created'
-  | 'sale.receipt_recorded';
+  | 'sale.receipt_recorded'
+  // Descuentos, cortes gratis y anulaciones (LP-10): actor = el manager que firmó con su PIN, motivo en
+  // `reason`. Uno por descuento (`sale.courtesy` si es un corte gratis) y uno por anulación.
+  | 'sale.discount_applied'
+  | 'sale.courtesy'
+  | 'sale.voided';
 
 export type AuditEntityType =
   | 'user'

@@ -2,6 +2,8 @@ import { type Health, TIMEZONE, toRomeIso } from '@los-papis/shared';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 
+import { createAuditRoutes } from './audit/audit.routes.ts';
+import { createAuditService } from './audit/service.ts';
 import { createAuthRoutes } from './auth/auth.routes.ts';
 import { csrfGuard } from './auth/csrf.ts';
 import { createDeviceRoutes } from './auth/devices.routes.ts';
@@ -52,6 +54,7 @@ export const createApp = ({ version, uptimeSeconds, log, push, auth }: AppDeps) 
   const authService = createAuthService(auth);
   const catalogService = createCatalogService(auth);
   const saleService = createSaleService(auth);
+  const auditService = createAuditService(auth);
 
   const app = new Hono<AuthEnv>()
     // Log estructurado por petición (sustituye a hono/logger, que solo imprime texto).
@@ -95,8 +98,11 @@ export const createApp = ({ version, uptimeSeconds, log, push, auth }: AppDeps) 
     .route('/api/products', createProductRoutes(catalogService))
     .route('/api/barbers', createBarberRoutes(catalogService))
     .route('/api/photos', createPhotoRoutes(catalogService))
-    // Cobro en la caja (LP-09): el libro de cobros, el día y el recibo del registratore.
-    .route('/api/sales', createSaleRoutes(saleService));
+    // Cobro en la caja (LP-09): el libro de cobros, el día y el recibo del registratore; descuentos y
+    // anulaciones (LP-10).
+    .route('/api/sales', createSaleRoutes(saleService))
+    // Visor de auditoría (LP-10): solo managers.
+    .route('/api/audit', createAuditRoutes(auditService));
 
   return app;
 };

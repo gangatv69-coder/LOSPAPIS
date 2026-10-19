@@ -76,7 +76,10 @@ describe('cobro en la caja (LP-09)', () => {
     return pinVerifyResponseSchema.parse(await res.json()).assertion;
   };
 
-  /** El cobro de la maqueta: Fade ×2 + Cera mate, en efectivo con 50 € entregados (48 € y 2 € de vuelto). */
+  /**
+   * El cobro de la maqueta: Fade ×2 + Cera mate, sin descuentos (los de LP-10 se prueban en
+   * sale-adjustments.test.ts), en efectivo con 50 € entregados (48 € y 2 € de vuelto).
+   */
   const cartRequest = (
     pinAssertion: string,
     overrides: Partial<CreateSaleRequest> = {},
@@ -87,6 +90,7 @@ describe('cobro en la caja (LP-09)', () => {
       { kind: 'service', id: fade.id, quantity: 2 },
       { kind: 'product', id: cera.id, quantity: 1 },
     ],
+    discounts: [],
     payment: { method: 'cash', tenderedCents: 5000 },
     expectedTotalCents: 4800,
     pinAssertion,
@@ -192,6 +196,8 @@ describe('cobro en la caja (LP-09)', () => {
           unitPriceCents: 1800,
           quantity: 2,
           lineTotalCents: 3600,
+          discountCents: 0,
+          netCents: 3600,
         },
         {
           id: expect.any(String),
@@ -202,9 +208,13 @@ describe('cobro en la caja (LP-09)', () => {
           unitPriceCents: 1200,
           quantity: 1,
           lineTotalCents: 1200,
+          discountCents: 0,
+          netCents: 1200,
         },
       ],
+      discounts: [],
       receiptNumber: null,
+      voided: null,
     });
     firstSale = sale;
     // La fila guarda el usuario de la sesión, ningún dispositivo y el hash de la petición.
@@ -221,7 +231,13 @@ describe('cobro en la caja (LP-09)', () => {
       entityType: 'sale',
       entityId: sale.id,
       deviceId: null,
-      after: { totalCents: 4800, method: 'cash', lines: 2, barberId: barbero.id },
+      after: {
+        totalCents: 4800,
+        discountCents: 0,
+        method: 'cash',
+        lines: 2,
+        barberId: barbero.id,
+      },
     });
   });
 
@@ -235,7 +251,15 @@ describe('cobro en la caja (LP-09)', () => {
     expect(fresh).toEqual({ sale: firstSale, idempotent: true });
     const day = await daySalesOf(manager);
     expect(day.sales.map((s) => s.id)).toEqual([firstSale.id]);
-    expect(day.totals).toEqual({ count: 1, cashCents: 4800, cardCents: 0, totalCents: 4800 });
+    expect(day.totals).toEqual({
+      count: 1,
+      cashCents: 4800,
+      cardCents: 0,
+      totalCents: 4800,
+      discountCents: 0,
+      voidedCount: 0,
+      voidedCents: 0,
+    });
     expect((await h.auditActions()).filter((a) => a === 'sale.created')).toHaveLength(1);
   });
 
@@ -332,7 +356,15 @@ describe('cobro en la caja (LP-09)', () => {
     const day = await daySalesOf(manager);
     expect(day.day).toBe('2026-10-19');
     expect(day.sales.map((s) => s.id)).toEqual([cardSaleId, raceSaleId, firstSale.id]);
-    expect(day.totals).toEqual({ count: 3, cashCents: 9600, cardCents: 1200, totalCents: 10800 });
+    expect(day.totals).toEqual({
+      count: 3,
+      cashCents: 9600,
+      cardCents: 1200,
+      totalCents: 10800,
+      discountCents: 0,
+      voidedCount: 0,
+      voidedCents: 0,
+    });
   });
 
   it('servicio desactivado, inexistente o pedido como producto → 404 catalog_item_unavailable; barbero desactivado o inexistente → 404 barber_unavailable', async () => {
@@ -503,7 +535,15 @@ describe('cobro en la caja (LP-09)', () => {
     expect(await daySalesOf(manager, '?day=2026-10-18')).toEqual({
       day: '2026-10-18',
       sales: [],
-      totals: { count: 0, cashCents: 0, cardCents: 0, totalCents: 0 },
+      totals: {
+        count: 0,
+        cashCents: 0,
+        cardCents: 0,
+        totalCents: 0,
+        discountCents: 0,
+        voidedCount: 0,
+        voidedCents: 0,
+      },
     });
     for (const bad of ['2026-13-01', '2027-02-29', 'hoy', '']) {
       const res = await manager.get(`/api/sales/day?day=${bad}`);
@@ -580,7 +620,15 @@ describe('cobro en la caja (LP-09)', () => {
     const today = await daySalesOf(manager);
     expect(today.day).toBe('2026-10-20');
     expect(today.sales.map((s) => s.id)).toEqual([sale.id]);
-    expect(today.totals).toEqual({ count: 1, cashCents: 4800, cardCents: 0, totalCents: 4800 });
+    expect(today.totals).toEqual({
+      count: 1,
+      cashCents: 4800,
+      cardCents: 0,
+      totalCents: 4800,
+      discountCents: 0,
+      voidedCount: 0,
+      voidedCents: 0,
+    });
     const yesterday = await daySalesOf(manager, '?day=2026-10-19');
     expect(yesterday.sales.map((s) => s.id)).toEqual([
       deviceSaleId,
@@ -593,6 +641,9 @@ describe('cobro en la caja (LP-09)', () => {
       cashCents: 11400,
       cardCents: 1200,
       totalCents: 12600,
+      discountCents: 0,
+      voidedCount: 0,
+      voidedCents: 0,
     });
   });
 

@@ -9,14 +9,18 @@ import {
   eq,
   inArray,
   products,
+  type SaleDiscountRow,
   type SaleLineRow,
   type SalePaymentRow,
   type SaleReceiptRow,
   type SaleRow,
+  type SaleVoidRow,
+  saleDiscounts,
   saleLines,
   salePayments,
   saleReceipts,
   sales,
+  saleVoids,
   services,
   sql,
   type Tx,
@@ -25,20 +29,25 @@ import {
   withShop,
 } from '@los-papis/db';
 import {
+  applyDiscounts,
   type CashDay,
   type CreateSaleRequest,
   type CreateSaleResponse,
-  cartTotals,
   cashDay,
   changeFor,
   type DaySales,
   type RecordReceiptRequest,
   type Sale,
+  type SaleDiscount,
   type SaleLine,
   type SaleLineInput,
+  type SaleLineRef,
   type SalePayment,
   type SalePaymentInput,
+  type SaleVoid,
+  saleLineKey,
   toRomeIso,
+  type VoidSaleRequest,
 } from '@los-papis/shared';
 
 import { audit } from '../auth/audit.ts';
@@ -47,10 +56,11 @@ import { type PinAssertion, verifyPinAssertion } from '../auth/tokens.ts';
 import type { AuthContext, AuthDeps } from '../auth/types.ts';
 
 /**
- * Cobro en la caja (LP-09) sin HTTP. Mismo patrón que el catálogo: cada método abre su transacción con la
- * barbería fijada (`withShop`) y deja la auditoría dentro de ella. El libro solo crece: un cobro se inserta
- * con sus líneas (precio y nombre de la base en ese momento, nunca del cliente) y su pago, y después no se
- * toca; el número de recibo es una fila nueva en `sale_receipts`.
+ * Cobro en la caja (LP-09) con descuentos, cortes gratis y anulaciones (LP-10), sin HTTP. Mismo patrón que el
+ * catálogo: cada método abre su transacción con la barbería fijada (`withShop`) y deja la auditoría dentro de
+ * ella. El libro solo crece: un cobro se inserta con sus líneas (precio y nombre de la base en ese momento,
+ * nunca del cliente), sus descuentos y su pago, y después no se toca; el número de recibo y la anulación son
+ * filas nuevas (`sale_receipts`, `sale_voids`).
  *
  * Idempotencia: el `id` lo genera el dispositivo. Repetir la misma petición (mismo `requestHash`) devuelve el
  * cobro ya guardado con `idempotent: true`; el mismo `id` con otro contenido es 409 `sale_conflict`. Dos
@@ -62,7 +72,9 @@ export type PinAssertionRejection = 'invalid' | 'shop' | 'device' | 'manager';
 
 /**
  * SHA-256 (hex) del contenido de la petición, sin la aserción (cambia en cada reintento). Es la clave de la
- * idempotencia: las líneas en su orden, el pago tal como lo mandó el cliente y el total que vio en pantalla.
+ * idempotencia: las líneas en su orden, los descuentos en su orden (con su motivo), el pago tal como lo mandó
+ * el cliente y el total que vio en pantalla. Sin descuentos el contenido es exactamente el de LP-09, así que el
+ * hash de un cobro sin descuentos no cambió con LP-10.
  */
 export const requestHashOf = (input: CreateSaleRequest): string =>
   createHash('sha256')
@@ -70,6 +82,17 @@ export const requestHashOf = (input: CreateSaleRequest): string =>
       JSON.stringify({
         barberId: input.barberId,
         lines: input.lines.map(({ kind, id, quantity }) => ({ kind, id, quantity })),
+        ...(input.discounts.length > 0
+          ? {
+              discounts: input.discounts.map(({ kind, mode, value, line, reason }) => ({
+                kind,
+                mode,
+                value,
+                line: line ? { kind: line.kind, id: line.id } : null,
+                reason,
+              })),
+            }
+          : {}),
         payment: {
           method: input.payment.method,
           tenderedCents: input.payment.tenderedCents ?? null,
@@ -79,7 +102,7 @@ export const requestHashOf = (input: CreateSaleRequest): string =>
     )
     .digest('hex');
 
-/** SQLSTATE unique_violation (la clave primaria de `sales`), directo o envuelto por Drizzle en `cause`. */
+/** SQLSTATE unique_violation (la clave primaria de `sales` o el índice único de `sale_voids`), directo o envuelto por Drizzle en `cause`. */
 const isUniqueViolation = (error: unknown): boolean => {
   if (typeof error !== 'object' || error === null) return false;
   const { code, cause } = error as { code?: unknown; cause?: unknown };
@@ -97,8 +120,23 @@ const assertCashier = (ctx: AuthContext): void => {
 const rejectAssertion = (reason: PinAssertionRejection): AuthError =>
   new AuthError('pin_assertion_invalid', 401, { reason });
 
-/** Una línea con su precio del momento, sin el `id` que pone la base al insertarla. */
-type PricedLine = Omit<SaleLine, 'id'>;
+/** Una línea con el precio y el nombre del momento (de la base), antes de los descuentos. */
+type PricedLine = SaleLineRef & { name: string; unitPriceCents: number; quantity: number };
+
+/**
+ * Posición en el cobro de la línea a la que apunta un descuento; null si es de todo el cobro. El esquema de la
+ * petición ya garantiza que la línea está (400 `validation`); si no estuviera, es un error de programación.
+ */
+const linePositionOf = (
+  lines: readonly SaleLineRef[],
+  target: SaleLineRef | null,
+): number | null => {
+  if (!target) return null;
+  const key = saleLineKey(target);
+  const position = lines.findIndex((line) => saleLineKey(line) === key);
+  if (position < 0) throw new RangeError('El descuento apunta a una línea que no está en el cobro');
+  return position;
+};
 
 /** Lo que una fila de `sales` necesita de sus vecinas para armar `saleSchema`. */
 type SaleHead = {
@@ -106,6 +144,18 @@ type SaleHead = {
   barberName: string;
   managerName: string;
   deviceName: string | null;
+};
+
+type DiscountWithName = { row: SaleDiscountRow; authorizedByName: string };
+type VoidWithName = { row: SaleVoidRow; byName: string };
+
+/** Lo que cuelga de un cobro: líneas, pago, recibos, descuentos (con quién los autorizó) y la anulación. */
+type SaleParts = {
+  lines: readonly SaleLineRow[];
+  payments: readonly SalePaymentRow[];
+  receipts: readonly SaleReceiptRow[];
+  discounts: readonly DiscountWithName[];
+  voided: VoidWithName | null;
 };
 
 const toSaleLine = (row: SaleLineRow): SaleLine => ({
@@ -117,6 +167,8 @@ const toSaleLine = (row: SaleLineRow): SaleLine => ({
   unitPriceCents: row.unitPriceCents,
   quantity: row.quantity,
   lineTotalCents: row.lineTotalCents,
+  discountCents: row.discountCents,
+  netCents: row.lineTotalCents - row.discountCents,
 });
 
 const toSalePayment = (row: SalePaymentRow): SalePayment => ({
@@ -126,13 +178,28 @@ const toSalePayment = (row: SalePaymentRow): SalePayment => ({
   changeCents: row.changeCents,
 });
 
-export const toSale = (
-  head: SaleHead,
-  lines: readonly SaleLineRow[],
-  payments: readonly SalePaymentRow[],
-  receipts: readonly SaleReceiptRow[],
-): Sale => {
-  const [payment] = payments;
+const toSaleDiscount = ({ row, authorizedByName }: DiscountWithName): SaleDiscount => ({
+  id: row.id,
+  kind: row.kind,
+  mode: row.mode,
+  value: row.value,
+  amountCents: row.amountCents,
+  lineId: row.saleLineId,
+  reason: row.reason,
+  authorizedById: row.authorizedByUserId,
+  authorizedByName,
+});
+
+const toSaleVoid = ({ row, byName }: VoidWithName): SaleVoid => ({
+  reason: row.reason,
+  byId: row.voidedByUserId,
+  byName,
+  occurredAt: toRomeIso(row.occurredAt),
+  cashDay: row.cashDay,
+});
+
+export const toSale = (head: SaleHead, parts: SaleParts): Sale => {
+  const [payment] = parts.payments;
   if (!payment) throw new Error(`El cobro ${head.sale.id} no tiene pago`);
   return {
     id: head.sale.id,
@@ -148,9 +215,11 @@ export const toSale = (
     discountCents: head.sale.discountCents,
     totalCents: head.sale.totalCents,
     payment: toSalePayment(payment),
-    lines: lines.map(toSaleLine),
+    lines: parts.lines.map(toSaleLine),
+    discounts: parts.discounts.map(toSaleDiscount),
     // Un cobro tiene como mucho un recibo (409 al repetir); si hubiera varios, vale el último.
-    receiptNumber: receipts.at(-1)?.receiptNumber ?? null,
+    receiptNumber: parts.receipts.at(-1)?.receiptNumber ?? null,
+    voided: parts.voided ? toSaleVoid(parts.voided) : null,
   };
 };
 
@@ -165,17 +234,33 @@ const groupBySale = <T extends { saleId: string }>(rows: readonly T[]): Map<stri
   return groups;
 };
 
-/** Totales del día: lo cobrado en efectivo, con tarjeta y en total. */
+/**
+ * Totales del día. Los anulados no cuentan (ni en el número de cobros ni en el efectivo, la tarjeta, el total
+ * o los descuentos): van aparte, cuántos son y lo que sumaban.
+ */
 const totalsOf = (list: readonly Sale[]): DaySales['totals'] => {
-  let cashCents = 0;
-  let cardCents = 0;
-  let totalCents = 0;
+  const totals: DaySales['totals'] = {
+    count: 0,
+    cashCents: 0,
+    cardCents: 0,
+    totalCents: 0,
+    discountCents: 0,
+    voidedCount: 0,
+    voidedCents: 0,
+  };
   for (const sale of list) {
-    totalCents += sale.totalCents;
-    if (sale.payment.method === 'cash') cashCents += sale.payment.amountCents;
-    else cardCents += sale.payment.amountCents;
+    if (sale.voided) {
+      totals.voidedCount += 1;
+      totals.voidedCents += sale.totalCents;
+      continue;
+    }
+    totals.count += 1;
+    totals.totalCents += sale.totalCents;
+    totals.discountCents += sale.discountCents;
+    if (sale.payment.method === 'cash') totals.cashCents += sale.payment.amountCents;
+    else totals.cardCents += sale.payment.amountCents;
   }
-  return { count: list.length, cashCents, cardCents, totalCents };
+  return totals;
 };
 
 /**
@@ -211,8 +296,9 @@ export const createSaleService = (deps: AuthDeps) => {
   };
 
   /**
-   * Varios cobros completos con cuatro consultas (cabeceras con sus nombres, líneas, pagos y recibos), en el
-   * orden de `saleIds`; los que no existan en esta barbería (la RLS esconde los de otras) se omiten.
+   * Varios cobros completos con seis consultas (cabeceras con sus nombres, líneas, pagos, recibos, descuentos
+   * con quién los autorizó y anulaciones con quién las firmó), en el orden de `saleIds`; los que no existan en
+   * esta barbería (la RLS esconde los de otras) se omiten.
    */
   const loadSales = async (tx: Tx, saleIds: readonly string[]): Promise<Sale[]> => {
     if (saleIds.length === 0) return [];
@@ -250,11 +336,41 @@ export const createSaleService = (deps: AuthDeps) => {
         .where(inArray(saleReceipts.saleId, ids))
         .orderBy(asc(saleReceipts.recordedAt), asc(saleReceipts.id)),
     );
+    const discounts = groupBySale(
+      await tx
+        .select({
+          saleId: saleDiscounts.saleId,
+          row: saleDiscounts,
+          authorizedByName: users.displayName,
+        })
+        .from(saleDiscounts)
+        .innerJoin(users, eq(users.id, saleDiscounts.authorizedByUserId))
+        .where(inArray(saleDiscounts.saleId, ids))
+        .orderBy(asc(saleDiscounts.position), asc(saleDiscounts.id)),
+    );
+    // Una anulación por cobro como mucho (índice único de sale_voids).
+    const voids = new Map(
+      (
+        await tx
+          .select({ row: saleVoids, byName: users.displayName })
+          .from(saleVoids)
+          .innerJoin(users, eq(users.id, saleVoids.voidedByUserId))
+          .where(inArray(saleVoids.saleId, ids))
+      ).map((entry) => [entry.row.saleId, entry]),
+    );
     const headsById = new Map(heads.map((head) => [head.sale.id, head]));
     return ids.flatMap((id) => {
       const head = headsById.get(id);
       if (!head) return [];
-      return [toSale(head, lines.get(id) ?? [], payments.get(id) ?? [], receipts.get(id) ?? [])];
+      return [
+        toSale(head, {
+          lines: lines.get(id) ?? [],
+          payments: payments.get(id) ?? [],
+          receipts: receipts.get(id) ?? [],
+          discounts: discounts.get(id) ?? [],
+          voided: voids.get(id) ?? null,
+        }),
+      ];
     });
   };
 
@@ -310,12 +426,10 @@ export const createSaleService = (deps: AuthDeps) => {
       }
       return {
         kind: line.kind,
-        serviceId: line.kind === 'service' ? line.id : null,
-        productId: line.kind === 'product' ? line.id : null,
+        id: line.id,
         name: item.name,
         unitPriceCents: item.priceCents,
         quantity: line.quantity,
-        lineTotalCents: item.priceCents * line.quantity,
       };
     });
   };
@@ -343,8 +457,12 @@ export const createSaleService = (deps: AuthDeps) => {
         .where(and(eq(barbers.id, input.barberId), eq(barbers.active, true)));
       if (!barber) throw new AuthError('barber_unavailable', 404);
 
-      const lines = await priceLines(tx, input.lines);
-      const { subtotalCents, totalCents } = cartTotals(lines);
+      // Los importes salen de la base y del cálculo compartido con la pantalla (descuentos de línea primero,
+      // después el de todo el cobro repartido sin perder céntimos).
+      const { lines, discounts, subtotalCents, discountCents, totalCents } = applyDiscounts(
+        await priceLines(tx, input.lines),
+        input.discounts,
+      );
       if (input.expectedTotalCents !== totalCents) {
         throw new AuthError('total_mismatch', 409, {
           expectedTotalCents: input.expectedTotalCents,
@@ -363,14 +481,59 @@ export const createSaleService = (deps: AuthDeps) => {
         deviceId: ctx.device?.id ?? null,
         createdByUserId: ctx.user?.id ?? null,
         subtotalCents,
-        discountCents: 0,
+        discountCents,
         totalCents,
         requestHash,
       });
-      await tx
+      const insertedLines = await tx
         .insert(saleLines)
-        .values(lines.map((line, position) => ({ shopId, saleId: input.id, position, ...line })));
+        .values(
+          lines.map((line, position) => ({
+            shopId,
+            saleId: input.id,
+            position,
+            kind: line.kind,
+            serviceId: line.kind === 'service' ? line.id : null,
+            productId: line.kind === 'product' ? line.id : null,
+            name: line.name,
+            unitPriceCents: line.unitPriceCents,
+            quantity: line.quantity,
+            lineTotalCents: line.lineTotalCents,
+            discountCents: line.discountCents,
+          })),
+        )
+        .returning({ id: saleLines.id, position: saleLines.position });
+      const lineIds = new Map(insertedLines.map((row) => [row.position, row.id]));
+      const lineIdAt = (position: number | null): string | null => {
+        if (position === null) return null;
+        const id = lineIds.get(position);
+        if (!id) throw new Error(`La línea ${position} del cobro ${input.id} no se guardó`);
+        return id;
+      };
       await tx.insert(salePayments).values({ shopId, saleId: input.id, ...payment });
+
+      const placed = discounts.map((discount) => ({
+        ...discount,
+        linePosition: linePositionOf(lines, discount.line),
+      }));
+      if (placed.length > 0) {
+        await tx.insert(saleDiscounts).values(
+          placed.map((discount, position) => ({
+            shopId,
+            saleId: input.id,
+            saleLineId: lineIdAt(discount.linePosition),
+            position,
+            kind: discount.kind,
+            mode: discount.mode,
+            value: discount.value,
+            amountCents: discount.amountCents,
+            reason: discount.reason,
+            // El mismo PIN que firma el cobro autoriza sus descuentos.
+            authorizedByUserId: manager.id,
+          })),
+        );
+      }
+
       await audit(tx, {
         shopId,
         actorUserId: manager.id,
@@ -379,6 +542,7 @@ export const createSaleService = (deps: AuthDeps) => {
         entityId: input.id,
         after: {
           totalCents,
+          discountCents,
           method: payment.method,
           lines: lines.length,
           barberId: barber.id,
@@ -386,13 +550,84 @@ export const createSaleService = (deps: AuthDeps) => {
         deviceId: ctx.device?.id,
         occurredAt: at,
       });
+      // Un rastro por descuento, con su motivo: el visor de auditoría los filtra por tipo.
+      for (const discount of placed) {
+        await audit(tx, {
+          shopId,
+          actorUserId: manager.id,
+          action: discount.kind === 'courtesy' ? 'sale.courtesy' : 'sale.discount_applied',
+          entityType: 'sale',
+          entityId: input.id,
+          reason: discount.reason,
+          after: {
+            kind: discount.kind,
+            mode: discount.mode,
+            value: discount.value,
+            amountCents: discount.amountCents,
+            lineName:
+              discount.linePosition === null ? null : (lines[discount.linePosition]?.name ?? null),
+            saleTotalCents: totalCents,
+          },
+          deviceId: ctx.device?.id,
+          occurredAt: at,
+        });
+      }
       return { sale: await loadSale(tx, input.id), idempotent: false };
+    });
+
+  const voidOnce = (ctx: AuthContext, id: string, input: VoidSaleRequest) =>
+    run<Sale>(async (tx, at) => {
+      assertCashier(ctx);
+      const { manager } = await verifiedAssertion(tx, ctx, input.pinAssertion, at);
+      const [sale] = await tx.select().from(sales).where(eq(sales.id, id));
+      if (!sale) throw new AuthError('not_found', 404);
+      const [voided] = await tx
+        .select({ id: saleVoids.id })
+        .from(saleVoids)
+        .where(eq(saleVoids.saleId, sale.id))
+        .limit(1);
+      if (voided) throw new AuthError('sale_voided', 409);
+      // Hasta el cierre de caja (LP-11) solo se anula lo del día de caja actual; lo de días anteriores se
+      // corregirá con un movimiento de caja.
+      const today = cashDay(at);
+      if (sale.cashDay !== today) {
+        throw new AuthError('sale_day_closed', 409, { cashDay: sale.cashDay });
+      }
+      const [payment] = await tx
+        .select({ method: salePayments.method })
+        .from(salePayments)
+        .where(eq(salePayments.saleId, sale.id))
+        .orderBy(asc(salePayments.id))
+        .limit(1);
+      await tx.insert(saleVoids).values({
+        shopId,
+        saleId: sale.id,
+        reason: input.reason,
+        voidedByUserId: manager.id,
+        deviceId: ctx.device?.id ?? null,
+        createdByUserId: ctx.user?.id ?? null,
+        cashDay: today,
+        occurredAt: at,
+      });
+      await audit(tx, {
+        shopId,
+        actorUserId: manager.id,
+        action: 'sale.voided',
+        entityType: 'sale',
+        entityId: sale.id,
+        before: { totalCents: sale.totalCents, method: payment?.method ?? null },
+        reason: input.reason,
+        deviceId: ctx.device?.id,
+        occurredAt: at,
+      });
+      return loadSale(tx, sale.id);
     });
 
   return {
     /**
      * POST /api/sales. Comprueba quién cobra, la aserción del PIN y el contenido; calcula los importes con los
-     * precios de la base y exige que el total coincida con el que vio el manager (409 `total_mismatch`).
+     * precios de la base y los descuentos, y exige que el total coincida con el que vio el manager (409
+     * `total_mismatch`). El manager de la aserción queda como quien autorizó cada descuento.
      */
     createSale: async (ctx: AuthContext, input: CreateSaleRequest): Promise<CreateSaleResponse> => {
       const requestHash = requestHashOf(input);
@@ -413,7 +648,10 @@ export const createSaleService = (deps: AuthDeps) => {
     /** GET /api/sales/:id (404 `not_found` si no es de esta barbería). */
     findSale: (id: string): Promise<Sale> => run<Sale>((tx) => loadSale(tx, id)),
 
-    /** GET /api/sales/day: los cobros de un día de caja (hoy si no se indica), los más recientes primero. */
+    /**
+     * GET /api/sales/day: los cobros de un día de caja (hoy si no se indica), los más recientes primero, con
+     * los anulados (marcados) y los totales sin ellos.
+     */
     daySales: (day?: CashDay): Promise<DaySales> =>
       run<DaySales>(async (tx, at) => {
         const target = day ?? cashDay(at);
@@ -465,6 +703,22 @@ export const createSaleService = (deps: AuthDeps) => {
         });
         return loadSale(tx, sale.id);
       }),
+
+    /**
+     * POST /api/sales/:id/void: anular con motivo y el PIN de un manager. Quién (dispositivo o sesión de un
+     * manager) → aserción (401) → cobro (404) → ya anulado (409 `sale_voided`) → día de caja actual (409
+     * `sale_day_closed`). La anulación es una fila nueva en `sale_voids`: el cobro nunca se borra y deja de
+     * contar en los totales. Dos anulaciones a la vez las separa el índice único: la segunda es 409.
+     */
+    voidSale: async (ctx: AuthContext, id: string, input: VoidSaleRequest): Promise<Sale> => {
+      try {
+        return await voidOnce(ctx, id, input);
+      } catch (error) {
+        // Carrera: otra anulación del mismo cobro ganó el índice único mientras esta comprobaba.
+        if (isUniqueViolation(error)) throw new AuthError('sale_voided', 409);
+        throw error;
+      }
+    },
   };
 };
 
