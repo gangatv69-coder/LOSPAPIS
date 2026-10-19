@@ -5,5 +5,6 @@ export * from './catalog.ts';
 export * from './health.ts';
 export * from './money.ts';
 export * from './push.ts';
+export * from './sales.ts';
 export * from './time.ts';
 export * from './totp.ts';

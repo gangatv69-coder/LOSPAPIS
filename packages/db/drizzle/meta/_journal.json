@@ -50,6 +50,20 @@
       "when": 1792400624661,
       "tag": "0006_catalog-patterns",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792403968794,
+      "tag": "0007_sales",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792403969245,
+      "tag": "0008_sales-patterns",
+      "breakpoints": true
     }
   ]
 }
