@@ -35,7 +35,11 @@ describe('aserción de PIN', () => {
     const token = signPinAssertion(SECRET, { ...subject, exp });
     const [body = '', signature = ''] = token.split('.');
     expect(verifyPinAssertion('otro-secreto', token, now)).toBeNull();
-    expect(verifyPinAssertion(SECRET, `${body}.${signature.slice(0, -1)}0`, now)).toBeNull();
+    // El último carácter de la firma se cambia por otro DISTINTO (si ya era "0", la "alteración" no alteraba nada).
+    const altered = signature.endsWith('0') ? '1' : '0';
+    expect(
+      verifyPinAssertion(SECRET, `${body}.${signature.slice(0, -1)}${altered}`, now),
+    ).toBeNull();
     const forgedBody = Buffer.from(JSON.stringify({ ...subject, exp: exp + 3600 })).toString(
       'base64url',
     );

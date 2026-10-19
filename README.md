@@ -24,8 +24,9 @@ pnpm --filter @los-papis/web exec playwright install chromium   # navegador para
 pnpm dev                                                       # API en http://127.0.0.1:3000 y web en http://127.0.0.1:5173
 ```
 
-Abre `http://127.0.0.1:5173`: verás la cabecera con la marca, las pestañas, el selector de idioma, el botón
-claro/oscuro y la tarjeta con lo que responde el servidor en `/api/health`.
+Abre `http://127.0.0.1:5173`: la primera vez la app lleva a `/configurar` para crear la cuenta del primer manager
+(ver "Acceso y roles"); después se entra por `/acceso` y aparecen la cabecera con la marca, las pestañas, el selector
+de idioma, el botón claro/oscuro y la tarjeta con lo que responde el servidor en `/api/health`.
 
 La base de datos usa los valores de desarrollo de `.env.example` (raíz). Para cambiarlos, copia ese archivo a
 `.env` (no se versiona) y edítalo. `pnpm check` y `pnpm test` necesitan la base levantada (`pnpm db:up`).
@@ -163,12 +164,16 @@ Los registros de nginx están en `/var/log/nginx/` (root) y los de Docker se rot
 ### Secretos
 
 Viven solo en `/opt/los-papis/.env` (propietario `lospapis`, permisos 600): `POSTGRES_PASSWORD`, `DB_OWNER_PASSWORD`
-y `DB_APP_PASSWORD` (generados por `provision-pruebas.sh`), `PUBLIC_URL`, `WEB_PORT`, `LOG_LEVEL`, `IMAGE_TAG` y las
-claves `VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY` (las escribe `deploy-remote.sh`). Ningún script los imprime. Nunca van
-al repositorio: `.env.example` (raíz) documenta los nombres con los valores de desarrollo. Las contraseñas de
-PostgreSQL solo se aplican al crear el volumen `db_data`; cambiarlas después exige `ALTER ROLE` en la base o borrar el
-volumen (`docker compose … down -v`, aceptable en pruebas). Si se borran las líneas `VAPID_*`, el siguiente despliegue
-genera claves nuevas y todos los móviles tienen que volver a activar los avisos.
+y `DB_APP_PASSWORD` (generados por `provision-pruebas.sh`), `PUBLIC_URL`, `WEB_PORT`, `LOG_LEVEL`, `IMAGE_TAG`, las
+claves `VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY` y los secretos de acceso `AUTH_SECRET` (firma las aserciones de PIN y
+los códigos de respaldo) y `AUTH_ENCRYPTION_KEY` (cifra los secretos 2FA en la base); los cuatro últimos los escribe
+`deploy-remote.sh` con `openssl` la primera vez. Ningún script los imprime. Nunca van al repositorio: `.env.example`
+(raíz) documenta los nombres con los valores de desarrollo. Las contraseñas de PostgreSQL solo se aplican al crear el
+volumen `db_data`; cambiarlas después exige `ALTER ROLE` en la base o borrar el volumen (`docker compose … down -v`,
+aceptable en pruebas). Si se borran las líneas `VAPID_*`, el siguiente despliegue genera claves nuevas y todos los
+móviles tienen que volver a activar los avisos. Si se cambia `AUTH_ENCRYPTION_KEY`, los secretos 2FA guardados dejan de
+poder leerse y cada manager tiene que configurar la verificación en dos pasos de nuevo (con un código de respaldo
+para entrar, o restableciendo su contraseña otro manager).
 
 ### Cambiar al dominio real
 
@@ -211,12 +216,45 @@ docker compose up -d api                              # para pnpm dev, las misma
 `VAPID_SUBJECT=https://pruebas.37-27-38-218.sslip.io` (o `mailto:<correo>`) en el mismo `.env`. En el servidor el
 sujeto es `PUBLIC_URL`.
 
+## Acceso y roles
+
+Implementación propia (Hono + `node:crypto`, sin Better Auth; motivo en la arquitectura, §4.1) en `apps/api/src/auth/`,
+`apps/web/src/features/auth/` y el contrato compartido `packages/shared/src/auth.ts` (esquemas Zod) y `totp.ts`
+(TOTP RFC 6238 con WebCrypto). Reglas que aplica el servidor (niega por defecto; la pantalla solo refleja lo que la API
+decide):
+
+- **Cuentas:** `manager` y `barber`. El primer manager se crea una sola vez en `/configurar` (solo mientras no exista
+  ninguno); las demás cuentas las crea un manager en Ajustes → Usuarios con una **contraseña temporal** que se muestra
+  una sola vez y que la persona cambia al entrar. Las cuentas nunca se borran: se desactivan. Contraseñas de 10
+  caracteres como mínimo, guardadas con scrypt. 10 fallos seguidos bloquean la cuenta 15 minutos.
+- **Managers con verificación en dos pasos obligatoria:** app de autenticación (Google Authenticator, Authy,
+  1Password…) y 8 códigos de respaldo de un solo uso que se muestran una vez. Las acciones sensibles (autorizar un
+  dispositivo, poner o desbloquear un PIN, crear o tocar a otro manager) exigen haber tecleado el código hace menos de
+  15 minutos; si no, la pantalla lo vuelve a pedir.
+- **Sesión:** cookie `httpOnly` (`lp_session` en el PC; `__Host-lp_session` con `secure` cuando `PUBLIC_URL` es https
+  o `COOKIE_SECURE=true`), 30 días como máximo y 14 sin uso. Protección CSRF propia (`Sec-Fetch-Site` u `Origin`
+  contra `PUBLIC_URL`).
+- **Dispositivos de caja:** un manager con 2FA autoriza una vez el iPad o el PC (Ajustes → Dispositivos); la caja
+  funciona después sin entrar con usuario (cookie de dispositivo de 400 días) y la lista permite revocarlos.
+- **PIN de caja:** 6 dígitos por manager (Ajustes → PIN). El diálogo "¿Quién cobra?" de la caja devuelve una aserción
+  firmada de 2 minutos que exigirán cobros y cierres. 5 fallos bloquean el PIN; lo desbloquea un manager con 2FA en
+  Ajustes → Usuarios. Cada uso y cada fallo queda en `audit_events`, en la misma transacción.
+- **Permisos** (PRD §5, `apps/api/src/auth/permissions.ts`): el manager puede todo; el barbero solo ve y mueve sus
+  citas, ve lo suyo facturado y avisa de insumos. `GET /api/users` responde 403 a un barbero.
+
+Variables (valores de desarrollo en `.env.example`; en el servidor las genera `deploy-remote.sh`): `AUTH_SECRET`,
+`AUTH_ENCRYPTION_KEY`, `APP_SHOP_SLUG` (la barbería de este despliegue; la crea `pnpm db:seed` o el servicio
+`migrate`), `DATABASE_URL` o las piezas `DB_HOST`/`DB_PORT`/`DB_APP_USER`/`DB_APP_PASSWORD`/`POSTGRES_DB`, y
+`COOKIE_SECURE` opcional. Pruebas: `apps/api/test/` corre contra `los_papis_test_api` y Playwright contra
+`los_papis_test_e2e` (las crea solas; hace falta `pnpm db:up`); `e2e/auth.setup.ts` crea el manager de pruebas por la
+API y calcula sus códigos 2FA con la librería compartida.
+
 ## Estructura
 
 ```
-apps/web               pantallas (React 19, Vite 8, TanStack Router y Query, Tailwind 4, shadcn/ui, i18next)
-apps/api               servidor (Node 26, Hono 4, Zod 4, pino)
-packages/shared        lo que comparten servidor y pantallas: esquemas Zod, marca, dinero en céntimos, hora de Roma y día de caja
+apps/web               pantallas (React 19, Vite 8, TanStack Router y Query, Tailwind 4, shadcn/ui, i18next); features/auth: acceso, 2FA, PIN, dispositivos y usuarios
+apps/api               servidor (Node 26, Hono 4, Zod 4, pino); src/auth: sesiones, 2FA, PIN, dispositivos, usuarios y permisos; test/: integración contra PostgreSQL
+packages/shared        lo que comparten servidor y pantallas: esquemas Zod (acceso incluido), TOTP y base32, marca, dinero en céntimos, hora de Roma y día de caja
 packages/db            esquema Drizzle, migraciones SQL, roles owner/app y patrones (solo-crece, aislamiento por barbería)
 infra/                 Dockerfiles, Caddyfile, script de roles de PostgreSQL y scripts del servidor de pruebas (infra/server); compose.yaml y compose.server.yaml están en la raíz
 scripts/               deploy-pruebas.ps1: despliegue al servidor de pruebas desde el PC (pnpm deploy:pruebas)
