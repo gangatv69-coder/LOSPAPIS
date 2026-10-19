@@ -20,6 +20,11 @@
 		root * /srv
 		# Los ficheros con hash de Vite (dist/assets) pueden cachearse para siempre
 		header /assets/* Cache-Control "public, max-age=31536000, immutable"
+		# PWA: el navegador debe ver siempre el sw.js y el manifiesto nuevos (los revalida en cada carga).
+		# El tipo del manifiesto se fija aquí porque la tabla MIME de la imagen no conoce .webmanifest.
+		header /sw.js Cache-Control "no-cache"
+		header /manifest.webmanifest Cache-Control "no-cache"
+		header /manifest.webmanifest Content-Type "application/manifest+json"
 		# route fuerza el orden: la cabecera de index.html se aplica DESPUÉS de la reescritura
 		route {
 			try_files {path} /index.html

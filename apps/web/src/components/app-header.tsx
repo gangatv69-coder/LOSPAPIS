@@ -24,7 +24,9 @@ export function AppHeader() {
   const { t } = useTranslation();
 
   return (
-    <header className="sticky top-0 z-10 bg-background">
+    // Relleno superior = zona segura: en la app instalada en iOS (barra de estado translúcida) el
+    // contenido llega hasta el borde y este relleno deja el reloj fuera de la cabecera. En el navegador vale 0.
+    <header className="sticky top-0 z-10 bg-background pt-[env(safe-area-inset-top)]">
       <a
         href="#main"
         className={`sr-only rounded-md bg-card px-3 py-2 font-medium focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-20 ${focusRing}`}

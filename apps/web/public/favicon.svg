@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- LOS PAPIS: cuadrado redondeado oscuro con la franja tricolor 2:1:1. Sin texto: en 16 px no se leería. -->
+  <title>LOS PAPIS</title>
+  <clipPath id="esquinas">
+    <rect width="64" height="64" rx="14" />
+  </clipPath>
+  <g clip-path="url(#esquinas)">
+    <rect width="64" height="64" fill="#111216" />
+    <rect x="0" y="40" width="32" height="24" fill="#fcd116" />
+    <rect x="32" y="40" width="16" height="24" fill="#003893" />
+    <rect x="48" y="40" width="16" height="24" fill="#ce1126" />
+  </g>
+</svg>

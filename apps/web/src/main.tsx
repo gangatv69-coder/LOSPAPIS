@@ -9,7 +9,11 @@ import { createRoot } from 'react-dom/client';
 
 import { AppProviders } from '@/components/app-providers';
 import { queryClient } from '@/lib/query-client';
+import { registerServiceWorker } from '@/pwa/register-sw';
 import { router } from '@/router';
+
+// Avisos push (PWA): el service worker se registra al terminar de cargar la página.
+registerServiceWorker();
 
 const container = document.getElementById('root');
 if (!container) {
