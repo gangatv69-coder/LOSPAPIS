@@ -47,22 +47,24 @@ Cada ticket es una sola cosa que se puede probar por separado y trae su propio c
 
 **Qué entrega:** el esqueleto del sistema funcionando en tu PC con Docker. Tiene el diseño de la maqueta, los dos idiomas y pruebas automáticas.
 
+**Estado: HECHO el 19 de octubre de 2026** (commits `cb90d09` → `55104a6`; plan y desviaciones en `.claude/plans/lp-01-base-del-proyecto.md`). `pnpm check` verde (32 pruebas unitarias, 8 e2e), `docker compose up` sano en `http://localhost:8080`, GitHub Actions `check` #1 en verde.
+
 **Criterios de aceptación**
-- [ ] Monorepo con pnpm, con `apps/web` (React 19, Vite 8, TanStack Router y Query, Tailwind 4, shadcn/ui), `apps/api` (Node 26 y Hono 4), `packages/shared`, `packages/db` (vacío por ahora) e `infra/`.
-- [ ] TypeScript 6 en modo estricto, con Biome, Vitest y Playwright configurados. `pnpm check` (tipos, estilo y pruebas) pasa.
-- [ ] Base del sistema de diseño tomada de la maqueta:
+- [x] Monorepo con pnpm, con `apps/web` (React 19, Vite 8, TanStack Router y Query, Tailwind 4, shadcn/ui), `apps/api` (Node 26 y Hono 4), `packages/shared`, `packages/db` (vacío por ahora) e `infra/`.
+- [x] TypeScript 6 en modo estricto, con Biome, Vitest y Playwright configurados. `pnpm check` (tipos, estilo y pruebas) pasa.
+- [x] Base del sistema de diseño tomada de la maqueta:
     - colores `#FCD116`, `#003893` y `#CE1126` sobre fondo neutro, en modo oscuro y claro;
     - fuentes Barlow Condensed y Geist;
     - números con ancho fijo;
     - franja tricolor 2:1:1;
     - cabecera con navegación.
-- [ ] Idiomas español e italiano con i18next y un selector de idioma. Ningún texto queda escrito directamente en el código; lo comprueba una prueba o una regla de estilo.
-- [ ] El servidor tiene una ruta `/health`, y la pantalla muestra el estado que devuelve.
-- [ ] `docker compose up` levanta todo en Windows (Docker Desktop con WSL2). El README explica los comandos en español.
-- [ ] Repositorio git inicializado y un flujo de GitHub Actions que corre `pnpm check` con cada cambio.
+- [x] Idiomas español e italiano con i18next y un selector de idioma. Ningún texto queda escrito directamente en el código; lo comprueba una prueba o una regla de estilo (Biome `noJsxLiterals` + prueba con la API del compilador de TypeScript).
+- [x] El servidor tiene una ruta `/health` (y `/api/health`), y la pantalla muestra el estado que devuelve.
+- [x] `docker compose up` levanta todo en Windows (Docker Desktop con WSL2). El README explica los comandos en español.
+- [x] Repositorio git inicializado y un flujo de GitHub Actions que corre `pnpm check` con cada cambio.
 
 **Contexto:** Arquitectura §4.1 (tecnología y estructura) y §4.4 (Diseño visual, Idiomas, Entornos) · Maqueta (cabecera, franja, colores y fuentes).
-**Archivos (estimado):** todo el esqueleto (`apps/*`, `packages/*`, `infra/docker-compose.yml`, `.github/workflows/`, `biome.json`, `tsconfig*.json`).
+**Archivos (reales):** `apps/web`, `apps/api`, `packages/shared`, `packages/db`, `infra/docker/*.Dockerfile`, `infra/caddy/Caddyfile`, `compose.yaml`, `.github/workflows/check.yml`, `biome.json`, `tsconfig*.json`, `vitest.config.ts`, `README.md`.
 **Tamaño:** ~900–1300 líneas, sobre todo configuración y la estructura de la app.
 **Depende de:** nada.
 
