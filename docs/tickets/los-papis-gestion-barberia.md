@@ -203,17 +203,19 @@ Cada ticket es una sola cosa que se puede probar por separado y trae su propio c
 
 **Qué entrega:** los servicios, productos y barberos que usa la caja, gestionados por los managers.
 
+**Estado: HECHO el 19 de octubre de 2026** (commits `00e3fc5` → `7c61bd1` más el de cierre; plan y desviaciones en `.claude/plans/lp-08-catalogo-y-equipo.md`). Pestañas nuevas **Catálogo** (Servicios | Productos) y **Equipo** para los managers, y en **Caja** la rejilla de servicios y productos con los chips de los barberos, como en la maqueta (solo lectura hasta LP-09). `pnpm check` en verde (405 pruebas unitarias e integración, 25 e2e) y desplegado en `https://pruebas.37-27-38-218.sslip.io` con los ejemplos de la maqueta cargados. Una desviación: las fotos se reducen en el propio iPad o PC (1024 px, JPEG) y el servidor las valida (tipo por bytes, 400 KB y 1600 px como máximo) antes de guardarlas en PostgreSQL; el motivo está en el plan.
+
 **Criterios de aceptación**
-- [ ] Servicios: nombre en italiano y español, precio en céntimos y duración. Productos: nombre, foto, precio y si está activo. Barberos: perfil unido a su usuario, nombre visible y avatar.
-- [ ] Pantallas del manager para ver, crear, editar y desactivar. Nada se borra.
-- [ ] Cada cambio de precio queda en la auditoría con el valor anterior y el nuevo. La caja lee el catálogo.
-- [ ] Fotos de productos tomadas desde el iPad o el PC. El servidor las reduce, las comprime y las guarda en PostgreSQL (Arquitectura §4.4, Fotos), así entran en la copia continua.
-- [ ] Un script de datos iniciales carga la lista real de precios cuando la tengas. Hasta entonces usa los ejemplos de la maqueta, para el servidor de pruebas y los simulacros.
+- [x] Servicios: nombre en italiano y español, precio en céntimos y duración. Productos: nombre, foto, precio y si está activo. Barberos: perfil unido a su usuario, nombre visible y avatar (iniciales sobre un color de la paleta, o foto).
+- [x] Pantallas del manager para ver, crear, editar y desactivar (y reactivar). Nada se borra: el rol `app` no tiene DELETE en estas tablas.
+- [x] Cada cambio de precio queda en la auditoría (`service.price_changed`, `product.price_changed`) con el valor anterior y el nuevo. La caja lee el catálogo (`GET /api/catalog`, también el dispositivo sin usuario).
+- [x] Fotos de productos (y de barberos) tomadas desde el iPad o el PC, reducidas en el dispositivo, validadas por el servidor y guardadas comprimidas en PostgreSQL (`photos`), así entran en la copia continua. Inmutables: cambiar la foto crea una fila y una URL nuevas.
+- [x] Datos iniciales: `pnpm db:seed` y el servicio `migrate` (`SEED_CATALOG=example`) cargan los ejemplos de la maqueta sin tocar lo que ya existe; la lista real se añade en `packages/db/src/seed-catalog.ts` cuando el dueño la pase.
 
 **Contexto:** Arquitectura §4.2 (Catálogo, Barbería y personas) y §4.4 (Fotos) · PRD §6 (etapa 1) y §9 (servicios y horarios) · Maqueta (casillas de servicios y productos).
-**Archivos (estimado):** `packages/db/src/schema/catalog.ts`, `apps/api/src/modules/catalog/`, `apps/web/src/features/catalog/` y `packages/db/seed/`.
-**Tamaño:** ~900–1200 líneas.
-**Depende de:** LP-05. **Necesita del dueño:** la lista de precios y de productos (si no, se usan los ejemplos).
+**Archivos (reales):** `packages/shared/src/catalog.ts`, `packages/db/src/schema/catalog.ts`, `packages/db/src/seed-catalog.ts`, migraciones `0005`/`0006`, `apps/api/src/catalog/*` (imágenes, servicio, rutas), `apps/api/test/catalog.test.ts`, `apps/web/src/features/catalog/*`, `apps/web/src/routes/{catalogo,equipo,caja}.tsx`, `apps/web/src/lib/api-request.ts`, `apps/web/e2e/catalog.spec.ts`, `compose.yaml`, `compose.server.yaml`, `.env.example`, `README.md`.
+**Tamaño:** ~900–1200 líneas estimadas; reales ~6.500 añadidas (contrato, base, API, pantallas, pruebas y documentación).
+**Depende de:** LP-05. **Necesita del dueño:** la lista real de precios y de productos (mientras tanto, los ejemplos de la maqueta).
 
 ### LP-09 — Cobro en la caja
 

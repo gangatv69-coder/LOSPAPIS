@@ -19,7 +19,7 @@ pnpm install                                                   # dependencias de
 Copy-Item apps\api\.env.example apps\api\.env                   # entorno local de la API
 pnpm db:up                                                     # PostgreSQL 18 en Docker (la primera vez crea los roles owner/app y la base de pruebas)
 pnpm db:migrate                                                # aplica las migraciones como owner
-pnpm db:seed                                                   # crea la barbería LOS PAPIS (se puede repetir)
+pnpm db:seed                                                   # crea la barbería LOS PAPIS y los ejemplos del catálogo (se puede repetir)
 pnpm --filter @los-papis/web exec playwright install chromium   # navegador para las pruebas e2e (una vez)
 pnpm dev                                                       # API en http://127.0.0.1:3000 y web en http://127.0.0.1:5173
 ```
@@ -44,7 +44,7 @@ La base de datos usa los valores de desarrollo de `.env.example` (raíz). Para c
 | `pnpm coverage` | Cobertura en `coverage/` |
 | `pnpm db:up` / `pnpm db:down` | Arranca (y espera a que esté sana) / para la base de datos en Docker. Los datos quedan en el volumen `db_data` |
 | `pnpm db:migrate` | Aplica las migraciones pendientes de `packages/db/drizzle/` como `owner` (se puede repetir) |
-| `pnpm db:seed` | Crea la barbería LOS PAPIS si no existe |
+| `pnpm db:seed` | Crea la barbería LOS PAPIS si no existe y carga los ejemplos del catálogo de la maqueta (servicios, productos y dos barberos sin contraseña); nunca cambia lo que ya existe |
 | `pnpm db:generate --name=<nombre>` | Genera una migración SQL a partir de los cambios en `packages/db/src/schema/`; con `--custom` crea una vacía para SQL a mano |
 | `pnpm db:check` | Comprueba la coherencia de la carpeta de migraciones (lo hace también `pnpm check`) |
 | `pnpm --filter @los-papis/api dev` | Solo la API. `…/api build` genera `apps/api/dist/index.mjs` |
@@ -249,12 +249,33 @@ Variables (valores de desarrollo en `.env.example`; en el servidor las genera `d
 `los_papis_test_e2e` (las crea solas; hace falta `pnpm db:up`); `e2e/auth.setup.ts` crea el manager de pruebas por la
 API y calcula sus códigos 2FA con la librería compartida.
 
+## Catálogo y equipo
+
+Lo que usa la caja: **servicios** (nombre en español e italiano, precio en céntimos con IVA incluido, duración),
+**productos** (nombre, precio, foto) y **barberos** (perfil unido a una cuenta: nombre visible, código corto y color del
+avatar, foto opcional). Contrato en `packages/shared/src/catalog.ts`, tablas en `packages/db/src/schema/catalog.ts`
+(`photos`, `services`, `products`, `barbers`), API en `apps/api/src/catalog/` y pantallas en
+`apps/web/src/features/catalog/` (pestañas **Catálogo** y **Equipo**, solo para managers).
+
+- Nada se borra: servicios, productos y barberos se desactivan (y se pueden reactivar). Cada cambio de precio queda en
+  `audit_events` (`service.price_changed` / `product.price_changed`) con el valor anterior y el nuevo.
+- La caja (dispositivo autorizado o cualquier usuario) lee `GET /api/catalog`: solo lo activo, en su orden.
+- **Fotos:** el navegador las reduce antes de subirlas (lado mayor 1024 px, JPEG) y la API las valida por los bytes
+  (JPEG, PNG o WebP; 400 KB y 1600 px como máximo) y las guarda en PostgreSQL (`photos.bytes`), así entran en la copia
+  continua. Son inmutables: cambiar la foto crea una fila nueva y una URL nueva (`/api/photos/<id>`, con caché larga).
+- **Datos iniciales:** `pnpm db:seed` carga los ejemplos de la maqueta (`CATALOG_EXAMPLE` en
+  `packages/db/src/seed-catalog.ts`); el servicio `migrate` de Docker hace lo mismo cuando `SEED_CATALOG=example`
+  (el valor por defecto en `compose.yaml` y en el servidor de pruebas; en producción, `none`). La carga es idempotente y
+  nunca modifica lo que ya existe: los precios que cambie el manager se respetan. Cuando el dueño pase la lista real,
+  se añade como otro conjunto de datos en ese mismo archivo. Los barberos de ejemplo (`barbero1`, `barbero2`) no tienen
+  contraseña: un manager se la restablece en Ajustes → Usuarios cuando llegue la persona real, o los desactiva.
+
 ## Estructura
 
 ```
-apps/web               pantallas (React 19, Vite 8, TanStack Router y Query, Tailwind 4, shadcn/ui, i18next); features/auth: acceso, 2FA, PIN, dispositivos y usuarios
-apps/api               servidor (Node 26, Hono 4, Zod 4, pino); src/auth: sesiones, 2FA, PIN, dispositivos, usuarios y permisos; test/: integración contra PostgreSQL
-packages/shared        lo que comparten servidor y pantallas: esquemas Zod (acceso incluido), TOTP y base32, marca, dinero en céntimos, hora de Roma y día de caja
+apps/web               pantallas (React 19, Vite 8, TanStack Router y Query, Tailwind 4, shadcn/ui, i18next); features/auth: acceso, 2FA, PIN, dispositivos y usuarios; features/catalog: servicios, productos, barberos y fotos
+apps/api               servidor (Node 26, Hono 4, Zod 4, pino); src/auth: sesiones, 2FA, PIN, dispositivos, usuarios y permisos; src/catalog: catálogo, equipo y fotos; test/: integración contra PostgreSQL
+packages/shared        lo que comparten servidor y pantallas: esquemas Zod (acceso y catálogo), TOTP y base32, marca, dinero en céntimos, hora de Roma y día de caja
 packages/db            esquema Drizzle, migraciones SQL, roles owner/app y patrones (solo-crece, aislamiento por barbería)
 infra/                 Dockerfiles, Caddyfile, script de roles de PostgreSQL y scripts del servidor de pruebas (infra/server); compose.yaml y compose.server.yaml están en la raíz
 scripts/               deploy-pruebas.ps1: despliegue al servidor de pruebas desde el PC (pnpm deploy:pruebas)
