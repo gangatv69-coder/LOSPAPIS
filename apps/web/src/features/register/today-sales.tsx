@@ -6,10 +6,12 @@ import {
   type SaleLine,
   serviceName,
 } from '@los-papis/shared';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 
-import { Badge } from '@/components/ui/badge';
+import { PinDialog } from '@/components/pin-dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -22,10 +24,13 @@ import {
 } from '@/components/ui/table';
 import { catalogQueryOptions } from '@/features/catalog/catalog.queries';
 import { catalogLanguageOf } from '@/features/register/catalog-grid';
-import { daySalesQueryOptions } from '@/features/register/register.queries';
+import { voidSale } from '@/features/register/register.api';
+import { daySalesQueryOptions, SALES_QUERY_PREFIX } from '@/features/register/register.queries';
 import { registerErrorMessage } from '@/features/register/register-errors';
+import { amountClass, TodaySaleRow } from '@/features/register/today-sale-row';
+import { VoidDialog } from '@/features/register/void-dialog';
 import { fallbackLanguage } from '@/i18n';
-import { formatTime } from '@/lib/format';
+import { isApiError } from '@/lib/api-client';
 
 /** El nombre guardado en el cobro (español) o, en italiano, el del servicio mientras siga en el catálogo. */
 function lineName(line: SaleLine, catalog: Catalog | undefined, language: CatalogLanguage): string {
@@ -50,19 +55,48 @@ export function linesSummary(
     .join(' · ');
 }
 
-const amountClass = 'text-right font-display text-lg font-semibold tabular-nums';
+type VoidVariables = { sale: Sale; reason: string; assertion: string };
 
 /**
- * "Cobros de hoy" (solo managers): hora, líneas resumidas, barbero, pago, manager e importe, con los
- * totales del día al pie. Solo consulta: los cobros no se editan ni se borran.
+ * "Cobros de hoy" (solo managers): hora, líneas resumidas con sus descuentos, barbero, pago, manager e
+ * importe, con los totales del día al pie (sin los anulados). Los cobros no se editan ni se borran: un
+ * cobro equivocado se anula con motivo y el PIN de un manager (LP-10) y queda tachado en la lista.
  */
 export function TodaySales() {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? fallbackLanguage;
   const language = catalogLanguageOf(locale);
+  const queryClient = useQueryClient();
   const day = useQuery(daySalesQueryOptions());
   const catalog = useQuery(catalogQueryOptions);
   const sales = day.data?.sales ?? [];
+  /** Cobro con el diálogo del motivo abierto. */
+  const [toVoid, setToVoid] = useState<Sale | null>(null);
+  /** Cobro y motivo a la espera del PIN. */
+  const [pending, setPending] = useState<{ sale: Sale; reason: string } | null>(null);
+  const [pinOpen, setPinOpen] = useState(false);
+
+  const voiding = useMutation({
+    mutationFn: ({ sale, reason, assertion }: VoidVariables) =>
+      voidSale(sale.id, { reason, pinAssertion: assertion }),
+    onSuccess: async () => {
+      toast.success(t('register.void.done'));
+      setPending(null);
+      await queryClient.invalidateQueries({ queryKey: SALES_QUERY_PREFIX });
+    },
+    onError: (caught, { sale, reason }) => {
+      toast.error(registerErrorMessage(caught, t));
+      if (isApiError(caught, 'pin_assertion_invalid')) {
+        // La firma caducó: se vuelve a pedir el PIN para el mismo cobro y el mismo motivo.
+        setPending({ sale, reason });
+        setPinOpen(true);
+        return;
+      }
+      setPending(null);
+      // Ya anulado, de otro día o inexistente: la lista se pone al día.
+      void queryClient.invalidateQueries({ queryKey: SALES_QUERY_PREFIX });
+    },
+  });
 
   return (
     <Card data-testid="today-sales">
@@ -98,38 +132,21 @@ export function TodaySales() {
                 <TableHead>{t('register.today.columns.payment')}</TableHead>
                 <TableHead>{t('register.today.columns.manager')}</TableHead>
                 <TableHead className="text-right">{t('register.today.columns.total')}</TableHead>
+                <TableHead>
+                  <span className="sr-only">{t('register.today.columns.actions')}</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {sales.map((sale) => (
-                <TableRow key={sale.id} data-testid="today-sale" data-sale-id={sale.id}>
-                  <TableCell className="font-medium tabular-nums">
-                    {formatTime(sale.occurredAt, locale)}
-                  </TableCell>
-                  <TableCell className="whitespace-normal">
-                    <span data-testid="today-sale-lines">
-                      {linesSummary(sale, catalog.data, language)}
-                    </span>
-                    {sale.receiptNumber !== null ? (
-                      <span className="block text-xs text-muted-foreground">
-                        {t('register.today.receipt', { number: sale.receiptNumber })}
-                      </span>
-                    ) : null}
-                  </TableCell>
-                  <TableCell>{sale.barberName}</TableCell>
-                  <TableCell>
-                    <Badge
-                      data-testid="today-sale-method"
-                      variant={sale.payment.method === 'cash' ? 'secondary' : 'outline'}
-                    >
-                      {t(`register.cart.${sale.payment.method}`)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{sale.managerName}</TableCell>
-                  <TableCell data-testid="today-sale-total" className={amountClass}>
-                    {formatCents(sale.totalCents)}
-                  </TableCell>
-                </TableRow>
+                <TodaySaleRow
+                  key={sale.id}
+                  sale={sale}
+                  linesText={linesSummary(sale, catalog.data, language)}
+                  locale={locale}
+                  busy={voiding.isPending}
+                  onVoid={setToVoid}
+                />
               ))}
             </TableBody>
             <TableFooter>
@@ -146,11 +163,50 @@ export function TodaySales() {
                 <TableCell data-testid="today-sales-total" className={amountClass}>
                   {formatCents(day.data.totals.totalCents)}
                 </TableCell>
+                <TableCell />
+              </TableRow>
+              <TableRow>
+                <TableCell colSpan={7} className="whitespace-normal text-muted-foreground">
+                  <span className="flex flex-wrap gap-x-6 gap-y-1">
+                    <span data-testid="today-sales-discounts">
+                      {t('register.today.discounts', {
+                        amount: formatCents(day.data.totals.discountCents),
+                      })}
+                    </span>
+                    <span data-testid="today-sales-voided">
+                      {t('register.today.voidedTotals', {
+                        count: day.data.totals.voidedCount,
+                        amount: formatCents(day.data.totals.voidedCents),
+                      })}
+                    </span>
+                  </span>
+                </TableCell>
               </TableRow>
             </TableFooter>
           </Table>
         ) : null}
       </CardContent>
+      <VoidDialog
+        sale={toVoid}
+        summary={toVoid ? linesSummary(toVoid, catalog.data, language) : ''}
+        onCancel={() => setToVoid(null)}
+        onConfirm={(reason) => {
+          if (!toVoid) return;
+          setPending({ sale: toVoid, reason });
+          setToVoid(null);
+          setPinOpen(true);
+        }}
+      />
+      <PinDialog
+        open={pinOpen}
+        onOpenChange={setPinOpen}
+        description={t('register.void.pinFor', {
+          total: formatCents(pending?.sale.totalCents ?? 0),
+        })}
+        onVerified={(result) => {
+          if (pending) voiding.mutate({ ...pending, assertion: result.assertion });
+        }}
+      />
     </Card>
   );
 }

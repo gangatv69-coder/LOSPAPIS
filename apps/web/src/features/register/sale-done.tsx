@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { discountSummary, formatMinus } from '@/features/register/discount-labels';
 import { recordReceipt } from '@/features/register/register.api';
 import { SALES_QUERY_PREFIX } from '@/features/register/register.queries';
 import { registerErrorMessage } from '@/features/register/register-errors';
@@ -22,7 +23,8 @@ export type SaleDoneProps = {
 
 /**
  * Adaptador fiscal manual: tras el cobro, en grande "Registratore: 38,00 € · EFECTIVO" (lo que hay que
- * marcar en el registratore de caja), el vuelto si lo hay, el número de recibo opcional y "Nuevo cobro".
+ * marcar en el registratore de caja), el descuento si lo hubo, el vuelto si lo hay, el número de recibo
+ * opcional y "Nuevo cobro".
  */
 export function SaleDone({ sale, idempotent = false, onNewSale }: SaleDoneProps) {
   const { t } = useTranslation();
@@ -32,6 +34,8 @@ export function SaleDone({ sale, idempotent = false, onNewSale }: SaleDoneProps)
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const change = sale.payment.changeCents;
+  const lineNameOf = (lineId: string | null): string | null =>
+    lineId === null ? null : (sale.lines.find((line) => line.id === lineId)?.name ?? null);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -77,6 +81,26 @@ export function SaleDone({ sale, idempotent = false, onNewSale }: SaleDoneProps)
         </p>
         {idempotent ? (
           <p className="text-muted-foreground">{t('register.done.idempotent')}</p>
+        ) : null}
+        {sale.discounts.length > 0 ? (
+          <div className="space-y-1">
+            <p data-testid="sale-done-discount" className="flex items-baseline gap-3">
+              <span className="text-lg text-muted-foreground">{t('register.done.discount')}</span>
+              <span className="font-display text-3xl font-bold tabular-nums">
+                {formatMinus(sale.discountCents, t)}
+              </span>
+            </p>
+            <ul className="space-y-0.5 text-sm text-muted-foreground">
+              {sale.discounts.map((discount) => (
+                <li key={discount.id} data-testid="sale-done-discount-item">
+                  {[
+                    discountSummary(discount, lineNameOf(discount.lineId), discount.amountCents, t),
+                    discount.reason,
+                  ].join(' · ')}
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : null}
         {change !== null && change > 0 ? (
           <p className="flex items-baseline gap-3">

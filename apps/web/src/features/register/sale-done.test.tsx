@@ -38,9 +38,13 @@ const cashSale: Sale = {
       unitPriceCents: 1800,
       quantity: 1,
       lineTotalCents: 1800,
+      discountCents: 0,
+      netCents: 1800,
     },
   ],
+  discounts: [],
   receiptNumber: null,
+  voided: null,
 };
 
 const cardSale: Sale = {

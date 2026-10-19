@@ -7,15 +7,16 @@ import {
   type RecordReceiptRequest,
   type Sale,
   saleSchema,
+  type VoidSaleRequest,
 } from '@los-papis/shared';
 
 import { get, post } from '@/lib/api-request';
 
 /*
- * Rutas /api/sales (LP-09) con fetch plano validado por los esquemas compartidos (como catalog.api.ts:
- * la API se escribió en paralelo). Errores: ApiError con el código estable (`pin_assertion_invalid`,
- * `total_mismatch`, `tender_too_low`, `sale_conflict`, `catalog_item_unavailable`, `barber_unavailable`,
- * `receipt_recorded`, `device_required`...).
+ * Rutas /api/sales (LP-09 y LP-10) con fetch plano validado por los esquemas compartidos (como
+ * catalog.api.ts: la API se escribió en paralelo). Errores: ApiError con el código estable
+ * (`pin_assertion_invalid`, `total_mismatch`, `tender_too_low`, `sale_conflict`, `catalog_item_unavailable`,
+ * `barber_unavailable`, `receipt_recorded`, `device_required`, `sale_voided`, `sale_day_closed`...).
  */
 
 async function json<T>(
@@ -50,3 +51,11 @@ export const recordReceipt = (id: string, receiptNumber: string): Promise<Sale> 
   const body: RecordReceiptRequest = { receiptNumber };
   return json(post(`/api/sales/${segment(id)}/receipt`, body), saleSchema);
 };
+
+/**
+ * POST /api/sales/:id/void: anula el cobro con motivo y la aserción del PIN de un manager. Fila nueva: el
+ * cobro sigue en el libro con `voided`. 409 sale_voided (ya anulado), 409 sale_day_closed (no es del día de
+ * caja actual), 401 pin_assertion_invalid.
+ */
+export const voidSale = (id: string, body: VoidSaleRequest): Promise<Sale> =>
+  json(post(`/api/sales/${segment(id)}/void`, body), saleSchema);

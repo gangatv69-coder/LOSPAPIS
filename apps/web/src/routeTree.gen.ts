@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root';
 import { Route as IndexRouteImport } from './routes/index';
 import { Route as AccesoRouteImport } from './routes/acceso';
 import { Route as AjustesRouteImport } from './routes/ajustes';
+import { Route as AuditoriaRouteImport } from './routes/auditoria';
 import { Route as CajaRouteImport } from './routes/caja';
 import { Route as CatalogoRouteImport } from './routes/catalogo';
 import { Route as CierreRouteImport } from './routes/cierre';
@@ -32,6 +33,11 @@ const AccesoRoute = AccesoRouteImport.update({
 const AjustesRoute = AjustesRouteImport.update({
   id: '/ajustes',
   path: '/ajustes',
+  getParentRoute: () => rootRouteImport,
+} as any);
+const AuditoriaRoute = AuditoriaRouteImport.update({
+  id: '/auditoria',
+  path: '/auditoria',
   getParentRoute: () => rootRouteImport,
 } as any);
 const CajaRoute = CajaRouteImport.update({
@@ -69,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute;
   '/acceso': typeof AccesoRoute;
   '/ajustes': typeof AjustesRoute;
+  '/auditoria': typeof AuditoriaRoute;
   '/caja': typeof CajaRoute;
   '/catalogo': typeof CatalogoRoute;
   '/cierre': typeof CierreRoute;
@@ -80,6 +87,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute;
   '/acceso': typeof AccesoRoute;
   '/ajustes': typeof AjustesRoute;
+  '/auditoria': typeof AuditoriaRoute;
   '/caja': typeof CajaRoute;
   '/catalogo': typeof CatalogoRoute;
   '/cierre': typeof CierreRoute;
@@ -92,6 +100,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute;
   '/acceso': typeof AccesoRoute;
   '/ajustes': typeof AjustesRoute;
+  '/auditoria': typeof AuditoriaRoute;
   '/caja': typeof CajaRoute;
   '/catalogo': typeof CatalogoRoute;
   '/cierre': typeof CierreRoute;
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/'
     | '/acceso'
     | '/ajustes'
+    | '/auditoria'
     | '/caja'
     | '/catalogo'
     | '/cierre'
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/'
     | '/acceso'
     | '/ajustes'
+    | '/auditoria'
     | '/caja'
     | '/catalogo'
     | '/cierre'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/'
     | '/acceso'
     | '/ajustes'
+    | '/auditoria'
     | '/caja'
     | '/catalogo'
     | '/cierre'
@@ -139,6 +151,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   AccesoRoute: typeof AccesoRoute;
   AjustesRoute: typeof AjustesRoute;
+  AuditoriaRoute: typeof AuditoriaRoute;
   CajaRoute: typeof CajaRoute;
   CatalogoRoute: typeof CatalogoRoute;
   CierreRoute: typeof CierreRoute;
@@ -168,6 +181,13 @@ declare module '@tanstack/react-router' {
       path: '/ajustes';
       fullPath: '/ajustes';
       preLoaderRoute: typeof AjustesRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/auditoria': {
+      id: '/auditoria';
+      path: '/auditoria';
+      fullPath: '/auditoria';
+      preLoaderRoute: typeof AuditoriaRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/caja': {
@@ -219,6 +239,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccesoRoute: AccesoRoute,
   AjustesRoute: AjustesRoute,
+  AuditoriaRoute: AuditoriaRoute,
   CajaRoute: CajaRoute,
   CatalogoRoute: CatalogoRoute,
   CierreRoute: CierreRoute,

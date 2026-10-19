@@ -19,6 +19,7 @@ import { catalogErrorMessage } from '@/features/catalog/catalog-errors';
 import { BarberPicker } from '@/features/register/barber-picker';
 import { CartPanel } from '@/features/register/cart-panel';
 import { CatalogGrid, catalogItems, catalogLanguageOf } from '@/features/register/catalog-grid';
+import { discountKindsList } from '@/features/register/discount-labels';
 import { createSale, fetchSale } from '@/features/register/register.api';
 import { SALES_QUERY_PREFIX } from '@/features/register/register.queries';
 import { isRetryableSaleError, registerErrorMessage } from '@/features/register/register-errors';
@@ -29,17 +30,19 @@ import { isApiError } from '@/lib/api-client';
 
 /**
  * La caja de la maqueta: barbero, rejilla del catálogo y panel de cobro; "Cobrar" pide el PIN del manager
- * y manda POST /api/sales con la aserción. Después, el adaptador fiscal manual (SaleDone). Un fallo de red
- * se reintenta con la MISMA petición (mismo id, misma aserción): el servidor nunca duplica el cobro.
- * Los managers ven debajo los cobros del día.
+ * y manda POST /api/sales con la aserción (que autoriza también los descuentos del carrito). Después, el
+ * adaptador fiscal manual (SaleDone). Un fallo de red se reintenta con la MISMA petición (mismo id, misma
+ * aserción): el servidor nunca duplica el cobro. Los managers ven debajo los cobros del día.
  */
 export function Register() {
   const { t, i18n } = useTranslation();
-  const language = catalogLanguageOf(i18n.resolvedLanguage ?? i18n.language);
+  const locale = i18n.resolvedLanguage ?? i18n.language;
+  const language = catalogLanguageOf(locale);
   const queryClient = useQueryClient();
   const { isManager } = useAuth();
   const catalog = useQuery(catalogQueryOptions);
-  const { state: cart, dispatch, totals, changeCents, canCharge } = useCart();
+  const { state: cart, dispatch, ...summary } = useCart();
+  const { totals } = summary;
   const [pinOpen, setPinOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   /** Petición que falló por la red o el servidor, lista para repetirse tal cual. */
@@ -198,9 +201,7 @@ export function Register() {
             ) : null}
             <CartPanel
               cart={cart}
-              totals={totals}
-              changeCents={changeCents}
-              canCharge={canCharge}
+              {...summary}
               barberName={barberName}
               busy={locked}
               dispatch={dispatch}
@@ -213,7 +214,15 @@ export function Register() {
       <PinDialog
         open={pinOpen}
         onOpenChange={setPinOpen}
-        description={t('register.pinFor', { total: formatCents(totals.totalCents) })}
+        description={
+          summary.pricedDiscounts.length > 0
+            ? t('register.pinForDiscounted', {
+                total: formatCents(totals.totalCents),
+                discount: formatCents(totals.discountCents),
+                kinds: discountKindsList(summary.pricedDiscounts, t, locale),
+              })
+            : t('register.pinFor', { total: formatCents(totals.totalCents) })
+        }
         onVerified={(result) => {
           const request = saleRequestOf(cart, result.assertion);
           if (request) void submit(request);

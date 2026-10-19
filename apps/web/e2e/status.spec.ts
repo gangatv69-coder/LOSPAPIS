@@ -14,7 +14,7 @@ test.describe('pantalla de estado', () => {
 
     const header = page.getByRole('banner');
     await expect(header.getByText('LOS PAPIS')).toBeVisible();
-    // Con la sesión del manager del proyecto `setup` la cabecera lleva también Catálogo y Equipo.
+    // Con la sesión del manager del proyecto `setup` la cabecera lleva también Catálogo, Equipo y Auditoría.
     const nav = header.getByRole('navigation', { name: 'Navegación principal' });
     await expect(nav.getByRole('link')).toHaveText([
       'Caja',
@@ -22,6 +22,7 @@ test.describe('pantalla de estado', () => {
       'Catálogo',
       'Equipo',
       'Panel',
+      'Auditoría',
       'Ajustes',
     ]);
     await expect(header.getByRole('combobox', { name: 'Idioma' })).toHaveValue('es');
@@ -63,6 +64,7 @@ test.describe('pantalla de estado', () => {
       'Catalogo',
       'Squadra',
       'Pannello',
+      'Registro',
       'Impostazioni',
     ]);
     await expect(page.getByRole('combobox', { name: 'Lingua' })).toHaveValue('it');

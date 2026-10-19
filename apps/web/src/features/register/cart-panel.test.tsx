@@ -25,15 +25,13 @@ const mockupCart: CartState = {
 
 /** El panel con el carrito de verdad detrás (useCart), como en la pantalla. */
 function Harness({ initial, onCharge }: { initial: CartState; onCharge: () => void }) {
-  const cart = useCart(initial);
+  const { state, dispatch, ...summary } = useCart(initial);
   return (
     <CartPanel
-      cart={cart.state}
-      totals={cart.totals}
-      changeCents={cart.changeCents}
-      canCharge={cart.canCharge}
+      cart={state}
+      {...summary}
       barberName="Barbero 1"
-      dispatch={cart.dispatch}
+      dispatch={dispatch}
       onCharge={onCharge}
     />
   );
@@ -152,5 +150,69 @@ describe('CartPanel', () => {
     expect(screen.getByTestId('cart-total')).toHaveTextContent('0,00 €');
     expect(screen.getByTestId('charge')).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Vaciar' })).toBeDisabled();
+  });
+
+  it('fidelidad del 10 % sobre todo el cobro: vista previa, fila con su motivo, Subtotal, Descuento y Total; × lo quita', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={mockupCart} onCharge={vi.fn()} />);
+
+    await user.click(screen.getByTestId('discount-open'));
+    const dialog = screen.getByTestId('discount-dialog');
+    expect(within(dialog).getByTestId('discount-kind-loyalty')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(dialog).getByTestId('discount-target')).toHaveValue('sale');
+    // Sin motivo no se aplica.
+    await user.type(within(dialog).getByTestId('discount-value'), '10');
+    expect(within(dialog).getByTestId('discount-preview')).toHaveTextContent(
+      'Descuento −3,80 € → total 34,20 €',
+    );
+    expect(within(dialog).getByTestId('discount-apply')).toBeDisabled();
+    await user.type(within(dialog).getByTestId('discount-reason'), 'cliente habitual');
+    await user.click(within(dialog).getByTestId('discount-apply'));
+
+    expect(screen.queryByTestId('discount-dialog')).toBeNull();
+    const row = screen.getByTestId('cart-discount');
+    expect(within(row).getByTestId('cart-discount-label')).toHaveTextContent(
+      'Fidelidad −10 % · −3,80 €',
+    );
+    expect(within(row).getByTestId('cart-discount-reason')).toHaveTextContent('cliente habitual');
+    expect(screen.getByTestId('cart-subtotal')).toHaveTextContent('38,00 €');
+    expect(screen.getByTestId('cart-discount-total')).toHaveTextContent('−3,80 €');
+    expect(screen.getByTestId('cart-total')).toHaveTextContent('34,20 €');
+    expect(screen.getByTestId('charge')).toHaveTextContent('Cobrar 34,20 €');
+
+    await user.click(within(row).getByTestId('cart-discount-remove'));
+    expect(screen.queryByTestId('cart-discount')).toBeNull();
+    expect(screen.queryByTestId('cart-subtotal')).toBeNull();
+    expect(screen.getByTestId('cart-total')).toHaveTextContent('38,00 €');
+  });
+
+  it('corte gratis: solo servicios, fijo al 100 %; la línea sale tachada a 0,00 € y el total baja', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={mockupCart} onCharge={vi.fn()} />);
+
+    await user.click(screen.getByTestId('discount-open'));
+    const dialog = screen.getByTestId('discount-dialog');
+    await user.click(within(dialog).getByTestId('discount-kind-courtesy'));
+    const target = within(dialog).getByTestId('discount-target');
+    // Ni "Todo el cobro" ni la cera: solo los servicios.
+    expect(
+      within(target)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Fade', 'Barba']);
+    expect(within(dialog).queryByTestId('discount-value')).toBeNull();
+    expect(within(dialog).getByTestId('discount-courtesy-hint')).toBeInTheDocument();
+    await user.type(within(dialog).getByTestId('discount-reason'), 'cumpleaños');
+    await user.click(within(dialog).getByTestId('discount-apply'));
+
+    expect(within(line('Fade')).getByTestId('cart-line-original')).toHaveTextContent('18,00 €');
+    expect(within(line('Fade')).getByTestId('cart-line-total')).toHaveTextContent('0,00 €');
+    expect(screen.getByTestId('cart-discount-label')).toHaveTextContent(
+      'Corte gratis · Fade · −18,00 €',
+    );
+    expect(screen.getByTestId('cart-total')).toHaveTextContent('20,00 €');
   });
 });

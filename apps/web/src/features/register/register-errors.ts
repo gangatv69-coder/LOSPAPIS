@@ -26,6 +26,12 @@ export function registerErrorMessage(error: unknown, t: TFunction): string {
         return t('register.errors.receiptRecorded');
       case 'device_required':
         return t('register.errors.deviceRequired');
+      case 'sale_voided':
+        return t('register.errors.saleVoided');
+      case 'sale_day_closed':
+        return t('register.errors.saleDayClosed');
+      case 'not_found':
+        return t('register.errors.saleNotFound');
       case 'validation':
         return t('catalog.errors.validation');
       default:

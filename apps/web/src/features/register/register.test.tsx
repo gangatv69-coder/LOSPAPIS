@@ -112,7 +112,15 @@ const catalog: Catalog = {
 const emptyDay: DaySales = {
   day: '2026-10-19',
   sales: [],
-  totals: { count: 0, cashCents: 0, cardCents: 0, totalCents: 0 },
+  totals: {
+    count: 0,
+    cashCents: 0,
+    cardCents: 0,
+    totalCents: 0,
+    discountCents: 0,
+    voidedCount: 0,
+    voidedCents: 0,
+  },
 };
 
 /** Lo que guardaría la API para esa petición (precios de la base, vuelto calculado). */
@@ -131,6 +139,8 @@ function saleFor(body: CreateSaleRequest, catalogNow: Catalog = catalog): Sale {
       unitPriceCents: price,
       quantity: line.quantity,
       lineTotalCents: price * line.quantity,
+      discountCents: 0,
+      netCents: price * line.quantity,
     };
   });
   const total = lines.reduce((sum, line) => sum + line.lineTotalCents, 0);
@@ -155,7 +165,9 @@ function saleFor(body: CreateSaleRequest, catalogNow: Catalog = catalog): Sale {
       changeCents: tendered === null ? null : tendered - total,
     },
     lines,
+    discounts: [],
     receiptNumber: null,
+    voided: null,
   };
 }
 

@@ -49,6 +49,7 @@ function createTestRouter(initialPath: string, auth: AuthState | null) {
     createRoute({ getParentRoute: () => rootRoute, path: '/catalogo', component: Empty }),
     createRoute({ getParentRoute: () => rootRoute, path: '/equipo', component: Empty }),
     createRoute({ getParentRoute: () => rootRoute, path: '/panel', component: Empty }),
+    createRoute({ getParentRoute: () => rootRoute, path: '/auditoria', component: Empty }),
     createRoute({ getParentRoute: () => rootRoute, path: '/ajustes', component: Empty }),
   ]);
   return createRouter({
@@ -84,18 +85,39 @@ describe('AppHeader', () => {
     expect(header.getByRole('button', { name: 'Pasar a modo oscuro' })).toBeInTheDocument();
   });
 
-  it('un manager ve además Catálogo y Equipo; con la 2FA pendiente, todavía no', async () => {
+  it('un manager ve además Catálogo, Equipo y Auditoría', async () => {
     const header = await renderHeader('/', manager);
     const nav = header.getByRole('navigation', { name: 'Navegación principal' });
     expect(
       within(nav)
         .getAllByRole('link')
         .map((link) => link.textContent),
-    ).toEqual(['Caja', 'Cierre', 'Catálogo', 'Equipo', 'Panel', 'Ajustes']);
+    ).toEqual(['Caja', 'Cierre', 'Catálogo', 'Equipo', 'Panel', 'Auditoría', 'Ajustes']);
     expect(within(nav).getByRole('link', { name: 'Catálogo' })).toHaveAttribute(
       'href',
       '/catalogo',
     );
+    expect(within(nav).getByRole('link', { name: 'Auditoría' })).toHaveAttribute(
+      'href',
+      '/auditoria',
+    );
+  });
+
+  it('con la 2FA pendiente un manager todavía no ve sus pestañas', async () => {
+    const header = await renderHeader('/', { ...manager, pendingTotp: true });
+    const nav = header.getByRole('navigation', { name: 'Navegación principal' });
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Caja', 'Cierre', 'Panel', 'Ajustes']);
+  });
+
+  it('en italiano la pestaña de la auditoría es «Registro»', async () => {
+    await i18n.changeLanguage('it');
+    const header = await renderHeader('/auditoria', manager);
+    const nav = header.getByRole('navigation', { name: 'Navigazione principale' });
+    expect(within(nav).getByRole('link', { current: 'page' })).toHaveTextContent('Registro');
   });
 
   it('un barbero ve solo Panel y Ajustes (ni la caja ni el cierre)', async () => {

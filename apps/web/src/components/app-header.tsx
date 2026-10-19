@@ -18,13 +18,14 @@ const baseTabs = [
   { to: '/ajustes', key: 'nav.settings' },
 ] as const;
 
-/** Un manager gestiona además el catálogo y el equipo (LP-08). */
+/** Un manager gestiona además el catálogo y el equipo (LP-08) y revisa la auditoría (LP-10). */
 const managerTabs = [
   { to: '/caja', key: 'nav.register' },
   { to: '/cierre', key: 'nav.close' },
   { to: '/catalogo', key: 'nav.catalog' },
   { to: '/equipo', key: 'nav.team' },
   { to: '/panel', key: 'nav.dashboard' },
+  { to: '/auditoria', key: 'nav.audit' },
   { to: '/ajustes', key: 'nav.settings' },
 ] as const;
 
