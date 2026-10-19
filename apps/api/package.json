@@ -22,11 +22,13 @@
     "@los-papis/shared": "workspace:*",
     "hono": "catalog:",
     "pino": "catalog:",
+    "qrcode": "catalog:",
     "web-push": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/qrcode": "catalog:",
     "@types/web-push": "catalog:",
     "pino-pretty": "catalog:",
     "tsdown": "catalog:",

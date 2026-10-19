@@ -61,6 +61,9 @@
     "disabled": "Avisos desactivados en este dispositivo",
     "error": "No se ha podido hablar con el servidor. Inténtalo de nuevo."
   },
+  "common": {
+    "close": "Cerrar"
+  },
   "placeholder": {
     "comingSoon": "Esta pantalla llega en un ticket posterior."
   },

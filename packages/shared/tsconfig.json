@@ -4,6 +4,8 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    // DOM solo por los tipos de WebCrypto (crypto.subtle en totp.ts): el código corre en Node y en el navegador.
+    "lib": ["ES2024", "DOM"],
     "types": []
   },
   "include": ["src", "vitest.config.ts", "vitest.setup.ts"]
