@@ -270,16 +270,39 @@ avatar, foto opcional). Contrato en `packages/shared/src/catalog.ts`, tablas en 
   se añade como otro conjunto de datos en ese mismo archivo. Los barberos de ejemplo (`barbero1`, `barbero2`) no tienen
   contraseña: un manager se la restablece en Ajustes → Usuarios cuando llegue la persona real, o los desactiva.
 
+## Cobro en la caja
+
+La pestaña **Caja** cobra como en la maqueta: barbero, servicios y productos del catálogo con sus cantidades, efectivo
+(botones rápidos de lo que entrega el cliente y vuelto calculado) o tarjeta, y **"Cobrar"** con el PIN de un manager
+(diálogo "¿Quién cobra?"). Contrato en `packages/shared/src/sales.ts` (con los cálculos puros del carrito), tablas en
+`packages/db/src/schema/sales.ts`, API en `apps/api/src/sales/` y pantalla en `apps/web/src/features/register/`.
+
+- **El libro solo crece:** `sales`, `sale_lines`, `sale_payments` y `sale_receipts` llevan el trigger `reject_mutation`
+  (ni el dueño de la base puede editar ni borrar) y el rol `app` solo puede leer e insertar. Cada cobro guarda las
+  líneas con el precio y el nombre del momento, el pago (entregado y vuelto), el barbero, el manager que firmó, el
+  dispositivo, la hora y el día de caja (`cashDay()`, hora de Roma). Anulaciones y descuentos llegan en LP-10 como filas
+  nuevas; el cierre, en LP-11.
+- **Una sola vez:** el identificador del cobro lo genera el dispositivo al empezar el carrito. Repetir la petición
+  (doble toque, reintento de red) devuelve el cobro ya guardado (`idempotent: true`); el mismo identificador con otro
+  contenido responde 409. Los precios los toma el servidor de la base y exige que coincidan con el total que vio el
+  manager (`total_mismatch` si cambiaron).
+- **PIN:** `POST /api/sales` exige la aserción firmada de `POST /api/auth/pin/verify` (2 minutos), de esta barbería y
+  del mismo dispositivo (o de la sesión del manager si no hay dispositivo). Los barberos no entran en la caja ni pueden
+  cobrar (403); el dispositivo autorizado cobra sin usuario, porque la barrera es el PIN.
+- **Adaptador fiscal manual:** al terminar, la pantalla muestra en grande "Registratore: 38,00 € · EFECTIVO" para
+  teclearlo en el registratore y permite guardar el número del recibo (`POST /api/sales/:id/receipt`, una sola vez).
+- Los managers ven "Cobros de hoy" bajo el cobro (`GET /api/sales/day`, también por `?day=YYYY-MM-DD`).
+
 ## Estructura
 
 ```
-apps/web               pantallas (React 19, Vite 8, TanStack Router y Query, Tailwind 4, shadcn/ui, i18next); features/auth: acceso, 2FA, PIN, dispositivos y usuarios; features/catalog: servicios, productos, barberos y fotos
-apps/api               servidor (Node 26, Hono 4, Zod 4, pino); src/auth: sesiones, 2FA, PIN, dispositivos, usuarios y permisos; src/catalog: catálogo, equipo y fotos; test/: integración contra PostgreSQL
-packages/shared        lo que comparten servidor y pantallas: esquemas Zod (acceso y catálogo), TOTP y base32, marca, dinero en céntimos, hora de Roma y día de caja
+apps/web               pantallas (React 19, Vite 8, TanStack Router y Query, Tailwind 4, shadcn/ui, i18next); features/auth: acceso, 2FA, PIN, dispositivos y usuarios; features/catalog: servicios, productos, barberos y fotos; features/register: el cobro
+apps/api               servidor (Node 26, Hono 4, Zod 4, pino); src/auth: sesiones, 2FA, PIN, dispositivos, usuarios y permisos; src/catalog: catálogo, equipo y fotos; src/sales: cobros; test/: integración contra PostgreSQL
+packages/shared        lo que comparten servidor y pantallas: esquemas Zod (acceso, catálogo y cobros), TOTP y base32, marca, dinero en céntimos, hora de Roma y día de caja
 packages/db            esquema Drizzle, migraciones SQL, roles owner/app y patrones (solo-crece, aislamiento por barbería)
 infra/                 Dockerfiles, Caddyfile, script de roles de PostgreSQL y scripts del servidor de pruebas (infra/server); compose.yaml y compose.server.yaml están en la raíz
 scripts/               deploy-pruebas.ps1: despliegue al servidor de pruebas desde el PC (pnpm deploy:pruebas)
-docs/                  tickets, maqueta, spikes (S4: avisos push)
+docs/                  tickets, maqueta, spikes (S2: velocidad de la caja; S4: avisos push)
 ```
 
 ## Idiomas y diseño

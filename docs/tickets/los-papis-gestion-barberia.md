@@ -221,28 +221,22 @@ Cada ticket es una sola cosa que se puede probar por separado y trae su propio c
 
 **Qué entrega:** un cobro completo, que se registra una sola vez, con su autor, y que no se puede modificar. Es la parte central de H1.
 
+**Estado: HECHO el 19 de octubre de 2026** (commits `89805dc` → `52df585` más el de cierre; plan y desviaciones en `.claude/plans/lp-09-cobro-en-la-caja.md`). La caja cobra como en la maqueta y el libro de cobros (`sales`, `sale_lines`, `sale_payments`, `sale_receipts`) solo crece: ni el dueño de la base puede editar ni borrar. `pnpm check` en verde (464 pruebas unitarias e integración, 27 e2e) y desplegado en `https://pruebas.37-27-38-218.sslip.io`. **Prueba S2 resuelta de paso:** en el e2e del iPad tres cobros completos (barbero, dos servicios y un producto, efectivo con vuelto, PIN) tardaron 1,2 s, 0,9 s y 1,1 s dentro de la app; lo que mande será el tecleo en el registratore. Sin anulaciones ni descuentos todavía (LP-10) ni cierre (LP-11).
+
 **Criterios de aceptación**
-- [ ] Pantalla de caja en el iPad y el PC como en la maqueta:
-    - elegir barbero;
-    - añadir servicios y productos y cambiar cantidades;
-    - efectivo o tarjeta;
-    - botones rápidos de lo que entrega el cliente, con el vuelto calculado.
-- [ ] "Cobrar" pide el PIN del manager (LP-05). El cobro se guarda en el libro que solo crece, con:
-    - las líneas, guardando el precio del momento;
-    - los pagos;
-    - el barbero, el manager y el dispositivo;
-    - la hora y el día de caja.
-- [ ] Cada cobro lleva un identificador que genera el dispositivo. Un doble toque o un reintento nunca crea dos cobros, y una prueba lo comprueba.
-- [ ] Adaptador fiscal en modo manual: después del cobro, la caja muestra en grande "Registratore: X € · EFECTIVO/TARJETA". Opcionalmente se guarda el número de recibo.
-- [ ] El cliente es opcional en el cobro. Asignarlo con el QR llega en LP-18.
-- [ ] Los managers ven la lista de cobros del día, solo para consulta.
-- [ ] Prueba E2E con Playwright, en tamaño iPad, del flujo completo. Además se mide el tiempo de los pasos dentro de la app (sin contar lo que se teclea en el registratore) y la mediana tiene que quedar por debajo de los 30 s.
-- [ ] Los barberos no pueden entrar a la caja. Las pruebas de permisos lo comprueban.
+- [x] Pantalla de caja en el iPad y el PC como en la maqueta: elegir barbero; añadir servicios y productos y cambiar cantidades; efectivo o tarjeta; botones rápidos de lo que entrega el cliente (exacto y los importes redondos siguientes), con el vuelto calculado.
+- [x] "Cobrar" pide el PIN del manager (LP-05: la aserción firmada de `/api/auth/pin/verify`, del mismo dispositivo). El cobro se guarda en el libro que solo crece con las líneas (precio y nombre del momento, tomados de la base y no del cliente), el pago (entregado y vuelto), el barbero, el manager, el dispositivo, la hora y el día de caja.
+- [x] Cada cobro lleva un identificador que genera el dispositivo. Repetir la petición devuelve el cobro ya guardado (`idempotent: true`); dos peticiones iguales a la vez las separa la clave primaria; el mismo identificador con otro contenido responde 409. Pruebas de integración lo comprueban (reintento, carrera y conflicto).
+- [x] Adaptador fiscal en modo manual: después del cobro, la caja muestra en grande "Registratore: 38,00 € · EFECTIVO" (o TARJETA) y permite guardar el número de recibo (fila nueva, una sola vez por cobro).
+- [x] El cliente es opcional en el cobro (sin columna hasta LP-18, cuando exista la tabla de clientes).
+- [x] Los managers ven "Cobros de hoy" bajo el cobro (y `GET /api/sales/day?day=`), solo para consulta.
+- [x] E2E con Playwright en tamaño iPad del flujo completo, tres veces, midiendo el tiempo dentro de la app: mediana 1,1 s (< 30 s).
+- [x] Los barberos no entran en la caja (la guardia los manda al inicio y sus pestañas son Panel y Ajustes) ni pueden cobrar ni ver los cobros (403 en la API); el dispositivo autorizado cobra sin usuario porque la barrera es el PIN. Pruebas de permisos en la API y en la guardia.
 
 **Contexto:** PRD §4 (H1), §6 (etapa 1 y Reglas fijas) y §7 (métricas de H1) · Arquitectura §4.2 (Dinero), §4.4 (Adaptador fiscal, Cobros duplicados y reintentos) y §6 (S2) · Maqueta ("Caja · Cobro").
-**Archivos (estimado):** `packages/db/src/schema/sales.ts`, `apps/api/src/modules/sales/`, `apps/api/src/modules/fiscal/` (adaptador en modo manual) y `apps/web/src/features/register/`.
-**Tamaño:** ~1300–1500 líneas.
-**Depende de:** LP-08. **Antes, si se puede:** la prueba S2 con la maqueta.
+**Archivos (reales):** `packages/shared/src/sales.ts`, `packages/db/src/schema/sales.ts` y migraciones `0007`/`0008`, `apps/api/src/sales/{service,sales.routes}.ts`, `apps/api/test/sales.test.ts`, `apps/web/src/features/register/*`, `apps/web/src/routes/caja.tsx`, `apps/web/e2e/{register.spec,pin}.ts`, `README.md`.
+**Tamaño:** ~1300–1500 líneas estimadas; reales ~5.500 añadidas (contrato, base, API, pantalla, pruebas y documentación).
+**Depende de:** LP-08. **Prueba S2:** hecha con la caja real en vez de con la maqueta (ver arriba).
 
 ### LP-10 — Descuentos, cortes gratis, anulaciones y auditoría
 
