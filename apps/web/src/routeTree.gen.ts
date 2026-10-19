@@ -10,14 +10,21 @@
 
 import { Route as rootRouteImport } from './routes/__root';
 import { Route as IndexRouteImport } from './routes/index';
+import { Route as AccesoRouteImport } from './routes/acceso';
 import { Route as AjustesRouteImport } from './routes/ajustes';
 import { Route as CajaRouteImport } from './routes/caja';
 import { Route as CierreRouteImport } from './routes/cierre';
+import { Route as ConfigurarRouteImport } from './routes/configurar';
 import { Route as PanelRouteImport } from './routes/panel';
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any);
+const AccesoRoute = AccesoRouteImport.update({
+  id: '/acceso',
+  path: '/acceso',
   getParentRoute: () => rootRouteImport,
 } as any);
 const AjustesRoute = AjustesRouteImport.update({
@@ -35,6 +42,11 @@ const CierreRoute = CierreRouteImport.update({
   path: '/cierre',
   getParentRoute: () => rootRouteImport,
 } as any);
+const ConfigurarRoute = ConfigurarRouteImport.update({
+  id: '/configurar',
+  path: '/configurar',
+  getParentRoute: () => rootRouteImport,
+} as any);
 const PanelRoute = PanelRouteImport.update({
   id: '/panel',
   path: '/panel',
@@ -43,39 +55,69 @@ const PanelRoute = PanelRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute;
+  '/acceso': typeof AccesoRoute;
   '/ajustes': typeof AjustesRoute;
   '/caja': typeof CajaRoute;
   '/cierre': typeof CierreRoute;
+  '/configurar': typeof ConfigurarRoute;
   '/panel': typeof PanelRoute;
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute;
+  '/acceso': typeof AccesoRoute;
   '/ajustes': typeof AjustesRoute;
   '/caja': typeof CajaRoute;
   '/cierre': typeof CierreRoute;
+  '/configurar': typeof ConfigurarRoute;
   '/panel': typeof PanelRoute;
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   '/': typeof IndexRoute;
+  '/acceso': typeof AccesoRoute;
   '/ajustes': typeof AjustesRoute;
   '/caja': typeof CajaRoute;
   '/cierre': typeof CierreRoute;
+  '/configurar': typeof ConfigurarRoute;
   '/panel': typeof PanelRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: '/' | '/ajustes' | '/caja' | '/cierre' | '/panel';
+  fullPaths:
+    | '/'
+    | '/acceso'
+    | '/ajustes'
+    | '/caja'
+    | '/cierre'
+    | '/configurar'
+    | '/panel';
   fileRoutesByTo: FileRoutesByTo;
-  to: '/' | '/ajustes' | '/caja' | '/cierre' | '/panel';
-  id: '__root__' | '/' | '/ajustes' | '/caja' | '/cierre' | '/panel';
+  to:
+    | '/'
+    | '/acceso'
+    | '/ajustes'
+    | '/caja'
+    | '/cierre'
+    | '/configurar'
+    | '/panel';
+  id:
+    | '__root__'
+    | '/'
+    | '/acceso'
+    | '/ajustes'
+    | '/caja'
+    | '/cierre'
+    | '/configurar'
+    | '/panel';
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
+  AccesoRoute: typeof AccesoRoute;
   AjustesRoute: typeof AjustesRoute;
   CajaRoute: typeof CajaRoute;
   CierreRoute: typeof CierreRoute;
+  ConfigurarRoute: typeof ConfigurarRoute;
   PanelRoute: typeof PanelRoute;
 }
 
@@ -86,6 +128,13 @@ declare module '@tanstack/react-router' {
       path: '/';
       fullPath: '/';
       preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/acceso': {
+      id: '/acceso';
+      path: '/acceso';
+      fullPath: '/acceso';
+      preLoaderRoute: typeof AccesoRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/ajustes': {
@@ -109,6 +158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CierreRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    '/configurar': {
+      id: '/configurar';
+      path: '/configurar';
+      fullPath: '/configurar';
+      preLoaderRoute: typeof ConfigurarRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/panel': {
       id: '/panel';
       path: '/panel';
@@ -121,9 +177,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccesoRoute: AccesoRoute,
   AjustesRoute: AjustesRoute,
   CajaRoute: CajaRoute,
   CierreRoute: CierreRoute,
+  ConfigurarRoute: ConfigurarRoute,
   PanelRoute: PanelRoute,
 };
 export const routeTree = rootRouteImport

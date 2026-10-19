@@ -1,8 +1,26 @@
 import { defineConfig, devices, type PlaywrightTestConfig } from '@playwright/test';
 
+import { MANAGER_STATE_FILE, WEB_ORIGIN } from './e2e/auth-files.ts';
+
 const isCI = Boolean(process.env.CI);
-const webUrl = 'http://127.0.0.1:5173';
+const webUrl = WEB_ORIGIN;
 const apiHealthUrl = 'http://127.0.0.1:3000/health';
+
+/** Base de datos propia de los e2e: la API de abajo la vacía y migra en cada ejecución. */
+const E2E_DATABASE = 'los_papis_test_e2e';
+const e2eDatabaseUrl =
+  process.env.E2E_DATABASE_URL ?? `postgres://app:app-dev@127.0.0.1:5432/${E2E_DATABASE}`;
+/** El rol owner solo prepara la base (reset y seed de la barbería); la API entra como app. */
+const e2eOwnerUrl =
+  process.env.E2E_DATABASE_URL_OWNER ?? `postgres://owner:owner-dev@127.0.0.1:5432/${E2E_DATABASE}`;
+
+/*
+ * Secretos FIJOS de la API de pruebas e2e (48 caracteres y 32 bytes en base64, lo que exige env.ts).
+ * Solo firman sesiones y cifran secretos TOTP de la base de pruebas, que se vacía en cada ejecución:
+ * no valen para ningún otro entorno (el servidor genera los suyos con deploy-remote.sh).
+ */
+const E2E_AUTH_SECRET = 'e2e-only-auth-secret-los-papis-0123456789abcdefg';
+const E2E_AUTH_ENCRYPTION_KEY = 'ZTJlLW9ubHktZW5jcnlwdGlvbi1rZXktMzJieXRlcyE=';
 
 // CI: anotaciones de GitHub + HTML sin abrir navegador. Local: lista + HTML que se abre solo si algo falla.
 const reporter: PlaywrightTestConfig['reporter'] = isCI
@@ -25,20 +43,29 @@ export default defineConfig({
   },
   projects: [
     {
+      // Crea el manager de pruebas por la API (bootstrap, 2FA, PIN) y guarda su sesión en e2e/.auth/.
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
+    },
+    {
       // Descriptor oficial de Playwright 1.64.1: 1194x834, deviceScaleFactor 2, isMobile y hasTouch.
       name: 'ipad-landscape',
+      dependencies: ['setup'],
       use: {
         ...devices['iPad Pro 11 landscape'],
         // El descriptor trae defaultBrowserType 'webkit'. En LP-01 solo se instala Chromium.
         browserName: 'chromium',
+        storageState: MANAGER_STATE_FILE,
       },
     },
     {
       name: 'desktop',
+      dependencies: ['setup'],
       use: {
         ...devices['Desktop Chrome'],
         // El viewport va siempre después del spread del dispositivo; si no, el dispositivo lo pisa.
         viewport: { width: 1440, height: 900 },
+        storageState: MANAGER_STATE_FILE,
       },
     },
   ],
@@ -46,10 +73,26 @@ export default defineConfig({
   // cwd por defecto = carpeta de este archivo (apps/web); `pnpm --filter` localiza el workspace desde ahí.
   webServer: [
     {
-      command: 'pnpm --filter @los-papis/api run start',
+      // Primero se vacía y migra la base de los e2e y se crea la barbería (la API la resuelve al arrancar por
+      // APP_SHOP_SLUG); después arranca la API apuntando a ella. Scripts de la raíz: pnpm no los busca
+      // desde apps/web sin -w. DATABASE_URL_OWNER de abajo hace que el seed vaya a la base de los e2e.
+      command: `pnpm -w run db:reset-test --name ${E2E_DATABASE} && pnpm -w run db:seed && pnpm --filter @los-papis/api run start`,
       url: apiHealthUrl,
-      reuseExistingServer: !isCI,
-      timeout: 60_000,
+      // Nunca se reutiliza una API ya levantada: podría apuntar a otra base (la de desarrollo).
+      reuseExistingServer: false,
+      timeout: 120_000,
+      // Playwright añade estas variables encima de process.env (no lo sustituye).
+      env: {
+        NODE_ENV: 'test',
+        DATABASE_URL: e2eDatabaseUrl,
+        DATABASE_URL_OWNER: e2eOwnerUrl,
+        AUTH_SECRET: E2E_AUTH_SECRET,
+        AUTH_ENCRYPTION_KEY: E2E_AUTH_ENCRYPTION_KEY,
+        // http en el PC: cookies sin __Host- ni Secure (lo mismo que en desarrollo).
+        COOKIE_SECURE: 'false',
+        // Origen de la app para la guardia CSRF (las peticiones llegan por el proxy de Vite).
+        PUBLIC_URL: webUrl,
+      },
     },
     {
       command: 'pnpm run dev',
