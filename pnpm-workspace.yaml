@@ -48,6 +48,11 @@ catalog:
   '@types/node': 26.6.5
   # compartido
   zod: 4.6.7
+  # base de datos (drizzle-kit 0.31.x es la pareja de drizzle-orm 0.45.x: se actualizan juntos)
+  drizzle-orm: 0.45.4
+  drizzle-kit: 0.31.11
+  pg: 8.23.1
+  '@types/pg': 8.23.1
   # calidad
   typescript: 6.0.3
   '@biomejs/biome': 2.5.15
@@ -59,6 +64,12 @@ catalog:
   '@testing-library/jest-dom': 7.0.1
   '@testing-library/user-event': 14.6.8
   '@playwright/test': 1.64.1
+  fast-check: 4.10.2
 
 minimumReleaseAgeExclude:
   - shadcn@4.22.1
+
+# esbuild llega con drizzle-kit (y con tsx). Su postinstall solo cambia el wrapper JS por el binario nativo;
+# sin ejecutarlo funciona igual (@esbuild/win32-x64 y linux-x64 vienen como dependencias opcionales).
+allowBuilds:
+  esbuild: false

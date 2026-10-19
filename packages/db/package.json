@@ -3,5 +3,28 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Esquema, migraciones y roles de PostgreSQL. Vacío hasta LP-02."
+  "description": "Esquema (Drizzle ORM 0.45), migraciones SQL, roles y patrones de PostgreSQL 18 de LOS PAPIS.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "drizzle-kit generate",
+    "check": "drizzle-kit check",
+    "migrate": "node src/cli/migrate.ts",
+    "seed": "node src/cli/seed.ts",
+    "typecheck": "tsc -b",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@los-papis/shared": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "pg": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/pg": "catalog:",
+    "drizzle-kit": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
 }
