@@ -4,6 +4,8 @@
     "skipToContent": "Vai al contenuto",
     "register": "Cassa",
     "close": "Chiusura",
+    "catalog": "Catalogo",
+    "team": "Squadra",
     "dashboard": "Pannello",
     "settings": "Impostazioni"
   },
@@ -290,6 +292,172 @@
       "usernameTaken": "Questo utente esiste già.",
       "self": "Non puoi disattivare il tuo stesso account."
     }
+  },
+  "catalog": {
+    "tabsLabel": "Sezioni del catalogo",
+    "tabs": {
+      "services": "Servizi",
+      "products": "Prodotti"
+    },
+    "loading": "Caricamento…",
+    "active": "Attivo",
+    "inactive": "Non attivo",
+    "minutes": "{{minutes}} min",
+    "cancel": "Annulla",
+    "save": "Salva",
+    "create": "Crea",
+    "errors": {
+      "notFound": "Non esiste più: ricarica la pagina.",
+      "validation": "Controlla i dati del modulo."
+    },
+    "preview": {
+      "title": "Catalogo",
+      "note": "Anteprima: l'incasso arriva nel prossimo passo.",
+      "barbers": "Barbiere",
+      "noBarbers": "Non c'è ancora nessun barbiere nella squadra.",
+      "noServices": "Non c'è ancora nessun servizio nel catalogo.",
+      "noProducts": "Non c'è ancora nessun prodotto nel catalogo."
+    }
+  },
+  "services": {
+    "title": "Servizi",
+    "subtitle": "Ciò che si incassa in cassa, con il prezzo (IVA inclusa) e la durata. Non si cancella nulla: si disattiva.",
+    "create": "Nuovo servizio",
+    "createTitle": "Nuovo servizio",
+    "editTitle": "Modifica «{{name}}»",
+    "formHint": "Il nome si mostra nella lingua di ogni schermata. Ogni cambio di prezzo viene registrato.",
+    "nameEs": "Nome in spagnolo",
+    "nameIt": "Nome in italiano",
+    "price": "Prezzo (€)",
+    "duration": "Durata (minuti)",
+    "columns": {
+      "nameEs": "Nome (es)",
+      "nameIt": "Nome (it)",
+      "duration": "Durata",
+      "price": "Prezzo",
+      "status": "Stato",
+      "actions": "Azioni"
+    },
+    "edit": "Modifica",
+    "deactivate": "Disattiva",
+    "reactivate": "Riattiva",
+    "deactivateTitle": "Disattivare «{{name}}»?",
+    "deactivateHint": "Non comparirà più in cassa. Potrai riattivarlo quando vuoi.",
+    "deactivateConfirm": "Sì, disattiva",
+    "created": "Servizio creato",
+    "updated": "Servizio salvato",
+    "deactivated": "Servizio disattivato",
+    "reactivated": "Servizio riattivato",
+    "empty": "Non c'è ancora nessun servizio: crea il primo.",
+    "errors": {
+      "nameEs": "Scrivi il nome in spagnolo.",
+      "nameIt": "Scrivi il nome in italiano.",
+      "duration": "La durata va da {{min}} a {{max}} minuti."
+    }
+  },
+  "products": {
+    "title": "Prodotti",
+    "subtitle": "Ciò che si vende in cassa, con il prezzo (IVA inclusa) e la foto. Non si cancella nulla: si disattiva.",
+    "create": "Nuovo prodotto",
+    "createTitle": "Nuovo prodotto",
+    "editTitle": "Modifica «{{name}}»",
+    "formHint": "La foto viene ridotta su questo dispositivo prima di salvarla. Ogni cambio di prezzo viene registrato.",
+    "name": "Nome",
+    "price": "Prezzo (€)",
+    "photo": "Foto",
+    "noPhoto": "Senza foto",
+    "columns": {
+      "photo": "Foto",
+      "name": "Nome",
+      "price": "Prezzo",
+      "status": "Stato",
+      "actions": "Azioni"
+    },
+    "edit": "Modifica",
+    "deactivate": "Disattiva",
+    "reactivate": "Riattiva",
+    "deactivateTitle": "Disattivare «{{name}}»?",
+    "deactivateHint": "Non comparirà più in cassa. Potrai riattivarlo quando vuoi.",
+    "deactivateConfirm": "Sì, disattiva",
+    "created": "Prodotto creato",
+    "updated": "Prodotto salvato",
+    "deactivated": "Prodotto disattivato",
+    "reactivated": "Prodotto riattivato",
+    "empty": "Non c'è ancora nessun prodotto: crea il primo.",
+    "errors": {
+      "name": "Scrivi il nome del prodotto."
+    }
+  },
+  "team": {
+    "title": "Barbieri",
+    "subtitle": "I barbieri che compaiono in cassa e in agenda, ognuno collegato al proprio account utente. Non si cancella nulla: si disattiva.",
+    "create": "Nuovo barbiere",
+    "createTitle": "Nuovo barbiere",
+    "editTitle": "Modifica «{{name}}»",
+    "formHint": "Il codice breve e il colore sono il suo avatar in cassa; la foto è facoltativa.",
+    "user": "Utente",
+    "chooseUser": "Scegli un utente",
+    "candidateOption": "{{name}} ({{username}})",
+    "noCandidates": "Non ci sono utenti senza profilo di barbiere. Prima crea l'account in Impostazioni → Utenti.",
+    "goUsers": "Vai a Impostazioni → Utenti",
+    "displayName": "Nome visibile",
+    "shortCode": "Codice breve (da 1 a 3 caratteri)",
+    "color": "Colore",
+    "photo": "Foto (facoltativa)",
+    "colors": {
+      "yellow": "Giallo",
+      "blue": "Blu",
+      "red": "Rosso",
+      "green": "Verde",
+      "purple": "Viola",
+      "orange": "Arancione",
+      "teal": "Verde acqua",
+      "pink": "Rosa"
+    },
+    "columns": {
+      "barber": "Barbiere",
+      "code": "Codice",
+      "user": "Utente",
+      "status": "Stato",
+      "actions": "Azioni"
+    },
+    "unknownUser": "—",
+    "edit": "Modifica",
+    "deactivate": "Disattiva",
+    "reactivate": "Riattiva",
+    "deactivateTitle": "Disattivare «{{name}}»?",
+    "deactivateHint": "Non comparirà più in cassa né in agenda. Il suo account utente resta com'è.",
+    "deactivateConfirm": "Sì, disattiva",
+    "created": "Barbiere creato",
+    "updated": "Barbiere salvato",
+    "deactivated": "Barbiere disattivato",
+    "reactivated": "Barbiere riattivato",
+    "empty": "Non c'è ancora nessun barbiere: crea il primo.",
+    "errors": {
+      "userRequired": "Scegli un utente.",
+      "nameRequired": "Scrivi il nome visibile.",
+      "codeInvalid": "Il codice ha da 1 a 3 lettere o cifre.",
+      "shortCodeTaken": "Quel codice lo usa già un altro barbiere attivo.",
+      "userAlreadyBarber": "Quell'utente ha già un profilo di barbiere."
+    }
+  },
+  "photo": {
+    "pick": "Scatta una foto / Scegli un'immagine",
+    "change": "Cambia foto",
+    "remove": "Togli foto",
+    "uploading": "Caricamento della foto…",
+    "previewAlt": "Anteprima della foto",
+    "errors": {
+      "tooLarge": "La foto pesa troppo anche ridotta (massimo 400 KB). Prova con un'altra.",
+      "invalid": "Quel file non è un'immagine valida (JPEG, PNG o WebP).",
+      "unreadable": "Impossibile leggere l'immagine. Prova con un'altra."
+    }
+  },
+  "price": {
+    "required": "Scrivi un prezzo.",
+    "invalid": "Il prezzo non si capisce. Scrivi per esempio 15 o 15,50.",
+    "tooHigh": "Il prezzo non può superare {{max}}.",
+    "negative": "Il prezzo non può essere negativo."
   },
   "common": {
     "close": "Chiudi"

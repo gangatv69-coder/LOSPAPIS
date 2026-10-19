@@ -4,6 +4,8 @@
     "skipToContent": "Saltar al contenido",
     "register": "Caja",
     "close": "Cierre",
+    "catalog": "Catálogo",
+    "team": "Equipo",
     "dashboard": "Panel",
     "settings": "Ajustes"
   },
@@ -290,6 +292,172 @@
       "usernameTaken": "Ese usuario ya existe.",
       "self": "No puedes desactivar tu propia cuenta."
     }
+  },
+  "catalog": {
+    "tabsLabel": "Secciones del catálogo",
+    "tabs": {
+      "services": "Servicios",
+      "products": "Productos"
+    },
+    "loading": "Cargando…",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "minutes": "{{minutes}} min",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "create": "Crear",
+    "errors": {
+      "notFound": "Eso ya no existe: recarga la página.",
+      "validation": "Revisa los datos del formulario."
+    },
+    "preview": {
+      "title": "Catálogo",
+      "note": "Vista previa: el cobro llega en el siguiente paso.",
+      "barbers": "Barbero",
+      "noBarbers": "Todavía no hay barberos en el equipo.",
+      "noServices": "Todavía no hay servicios en el catálogo.",
+      "noProducts": "Todavía no hay productos en el catálogo."
+    }
+  },
+  "services": {
+    "title": "Servicios",
+    "subtitle": "Lo que se cobra en la caja, con su precio (IVA incluido) y su duración. Nada se borra: se desactiva.",
+    "create": "Nuevo servicio",
+    "createTitle": "Nuevo servicio",
+    "editTitle": "Editar «{{name}}»",
+    "formHint": "El nombre se enseña en el idioma de cada pantalla. Cada cambio de precio queda registrado.",
+    "nameEs": "Nombre en español",
+    "nameIt": "Nombre en italiano",
+    "price": "Precio (€)",
+    "duration": "Duración (minutos)",
+    "columns": {
+      "nameEs": "Nombre (es)",
+      "nameIt": "Nombre (it)",
+      "duration": "Duración",
+      "price": "Precio",
+      "status": "Estado",
+      "actions": "Acciones"
+    },
+    "edit": "Editar",
+    "deactivate": "Desactivar",
+    "reactivate": "Reactivar",
+    "deactivateTitle": "¿Desactivar «{{name}}»?",
+    "deactivateHint": "Dejará de aparecer en la caja. Podrás reactivarlo cuando quieras.",
+    "deactivateConfirm": "Sí, desactivar",
+    "created": "Servicio creado",
+    "updated": "Servicio guardado",
+    "deactivated": "Servicio desactivado",
+    "reactivated": "Servicio reactivado",
+    "empty": "Todavía no hay servicios: crea el primero.",
+    "errors": {
+      "nameEs": "Escribe el nombre en español.",
+      "nameIt": "Escribe el nombre en italiano.",
+      "duration": "La duración va de {{min}} a {{max}} minutos."
+    }
+  },
+  "products": {
+    "title": "Productos",
+    "subtitle": "Lo que se vende en la caja, con su precio (IVA incluido) y su foto. Nada se borra: se desactiva.",
+    "create": "Nuevo producto",
+    "createTitle": "Nuevo producto",
+    "editTitle": "Editar «{{name}}»",
+    "formHint": "La foto se reduce en este dispositivo antes de guardarla. Cada cambio de precio queda registrado.",
+    "name": "Nombre",
+    "price": "Precio (€)",
+    "photo": "Foto",
+    "noPhoto": "Sin foto",
+    "columns": {
+      "photo": "Foto",
+      "name": "Nombre",
+      "price": "Precio",
+      "status": "Estado",
+      "actions": "Acciones"
+    },
+    "edit": "Editar",
+    "deactivate": "Desactivar",
+    "reactivate": "Reactivar",
+    "deactivateTitle": "¿Desactivar «{{name}}»?",
+    "deactivateHint": "Dejará de aparecer en la caja. Podrás reactivarlo cuando quieras.",
+    "deactivateConfirm": "Sí, desactivar",
+    "created": "Producto creado",
+    "updated": "Producto guardado",
+    "deactivated": "Producto desactivado",
+    "reactivated": "Producto reactivado",
+    "empty": "Todavía no hay productos: crea el primero.",
+    "errors": {
+      "name": "Escribe el nombre del producto."
+    }
+  },
+  "team": {
+    "title": "Barberos",
+    "subtitle": "Los barberos que aparecen en la caja y en la agenda, cada uno unido a su cuenta de usuario. Nada se borra: se desactiva.",
+    "create": "Nuevo barbero",
+    "createTitle": "Nuevo barbero",
+    "editTitle": "Editar «{{name}}»",
+    "formHint": "El código corto y el color son su avatar en la caja; la foto es opcional.",
+    "user": "Usuario",
+    "chooseUser": "Elige un usuario",
+    "candidateOption": "{{name}} ({{username}})",
+    "noCandidates": "No hay usuarios sin perfil de barbero. Primero crea la cuenta en Ajustes → Usuarios.",
+    "goUsers": "Ir a Ajustes → Usuarios",
+    "displayName": "Nombre visible",
+    "shortCode": "Código corto (1 a 3 caracteres)",
+    "color": "Color",
+    "photo": "Foto (opcional)",
+    "colors": {
+      "yellow": "Amarillo",
+      "blue": "Azul",
+      "red": "Rojo",
+      "green": "Verde",
+      "purple": "Morado",
+      "orange": "Naranja",
+      "teal": "Verde azulado",
+      "pink": "Rosa"
+    },
+    "columns": {
+      "barber": "Barbero",
+      "code": "Código",
+      "user": "Usuario",
+      "status": "Estado",
+      "actions": "Acciones"
+    },
+    "unknownUser": "—",
+    "edit": "Editar",
+    "deactivate": "Desactivar",
+    "reactivate": "Reactivar",
+    "deactivateTitle": "¿Desactivar a «{{name}}»?",
+    "deactivateHint": "Dejará de aparecer en la caja y en la agenda. Su cuenta de usuario sigue igual.",
+    "deactivateConfirm": "Sí, desactivar",
+    "created": "Barbero creado",
+    "updated": "Barbero guardado",
+    "deactivated": "Barbero desactivado",
+    "reactivated": "Barbero reactivado",
+    "empty": "Todavía no hay barberos: crea el primero.",
+    "errors": {
+      "userRequired": "Elige un usuario.",
+      "nameRequired": "Escribe el nombre visible.",
+      "codeInvalid": "El código lleva de 1 a 3 letras o cifras.",
+      "shortCodeTaken": "Ese código ya lo usa otro barbero activo.",
+      "userAlreadyBarber": "Ese usuario ya tiene perfil de barbero."
+    }
+  },
+  "photo": {
+    "pick": "Hacer foto / Elegir imagen",
+    "change": "Cambiar foto",
+    "remove": "Quitar foto",
+    "uploading": "Subiendo la foto…",
+    "previewAlt": "Vista previa de la foto",
+    "errors": {
+      "tooLarge": "La foto pesa demasiado incluso reducida (máximo 400 KB). Prueba con otra.",
+      "invalid": "Ese archivo no es una imagen válida (JPEG, PNG o WebP).",
+      "unreadable": "No se ha podido leer la imagen. Prueba con otra."
+    }
+  },
+  "price": {
+    "required": "Escribe un precio.",
+    "invalid": "No se entiende el precio. Escribe por ejemplo 15 o 15,50.",
+    "tooHigh": "El precio no puede pasar de {{max}}.",
+    "negative": "El precio no puede ser negativo."
   },
   "common": {
     "close": "Cerrar"

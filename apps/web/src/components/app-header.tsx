@@ -8,11 +8,22 @@ import { Wordmark } from '@/components/brand/wordmark';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
+import { isManagerSession } from '@/features/auth/auth-guard';
 
 /** Pestañas de la cabecera. `to` está tipado por el registro del router: la ruta tiene que existir. */
-const tabs = [
+const baseTabs = [
   { to: '/caja', key: 'nav.register' },
   { to: '/cierre', key: 'nav.close' },
+  { to: '/panel', key: 'nav.dashboard' },
+  { to: '/ajustes', key: 'nav.settings' },
+] as const;
+
+/** Un manager gestiona además el catálogo y el equipo (LP-08); barberos y dispositivos no las ven. */
+const managerTabs = [
+  { to: '/caja', key: 'nav.register' },
+  { to: '/cierre', key: 'nav.close' },
+  { to: '/catalogo', key: 'nav.catalog' },
+  { to: '/equipo', key: 'nav.team' },
   { to: '/panel', key: 'nav.dashboard' },
   { to: '/ajustes', key: 'nav.settings' },
 ] as const;
@@ -41,6 +52,7 @@ export function AppHeader({
   const { t } = useTranslation();
   const user = auth?.user ?? null;
   const device = auth?.device ?? null;
+  const tabs = auth && isManagerSession(auth) ? managerTabs : baseTabs;
 
   return (
     // Relleno superior = zona segura: en la app instalada en iOS (barra de estado translúcida) el

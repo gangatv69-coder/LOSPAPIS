@@ -1,8 +1,6 @@
 import {
-  type ApiErrorBody,
   type AuthorizeDeviceRequest,
   type AuthState,
-  apiErrorSchema,
   authStateSchema,
   type BackupCodesResponse,
   type BootstrapRequest,
@@ -26,47 +24,13 @@ import {
   userSummarySchema,
 } from '@los-papis/shared';
 
-import { ApiError } from '@/lib/api-client';
-import { queryClient } from '@/lib/query-client';
+import { post, request } from '@/lib/api-request';
 
 /*
  * Rutas /api/auth, /api/devices y /api/users con fetch plano validado por los esquemas compartidos
  * (mismo criterio que push.api.ts: la API se escribió en paralelo y no dependemos de sus tipos).
- * Siempre `credentials: 'same-origin'`: la sesión y el dispositivo viajan en cookies httpOnly.
+ * El transporte (cookies, ApiError, sesión perdida) vive en lib/api-request.ts.
  */
-
-const JSON_HEADERS = { 'content-type': 'application/json' };
-
-/** Códigos con los que la API dice que la sesión ya no vale: se vuelve a preguntar quién soy. */
-const SESSION_LOST_CODES = new Set(['unauthenticated', 'totp_required']);
-
-async function readErrorBody(res: Response): Promise<ApiErrorBody | undefined> {
-  try {
-    const parsed = apiErrorSchema.safeParse(await res.json());
-    return parsed.success ? parsed.data : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-async function request(path: string, init: RequestInit = {}): Promise<Response> {
-  const res = await fetch(path, { credentials: 'same-origin', ...init });
-  if (res.ok) return res;
-  const body = await readErrorBody(res);
-  if (res.status === 401 && body && SESSION_LOST_CODES.has(body.error)) {
-    // La sesión caducó o se cerró en otro sitio: el estado de acceso se refresca y el guardia decide.
-    void queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
-  }
-  const detail = body ? ` (${body.error})` : '';
-  throw new ApiError(res.status, `${path}: HTTP ${res.status}${detail}`, body);
-}
-
-function withJson(method: 'POST' | 'DELETE', body: unknown): RequestInit {
-  return { method, headers: JSON_HEADERS, body: JSON.stringify(body) };
-}
-
-const post = (path: string, body?: unknown): Promise<Response> =>
-  request(path, body === undefined ? { method: 'POST' } : withJson('POST', body));
 
 // --- Sesión ---------------------------------------------------------------------------------
 

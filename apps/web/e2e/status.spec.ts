@@ -14,8 +14,16 @@ test.describe('pantalla de estado', () => {
 
     const header = page.getByRole('banner');
     await expect(header.getByText('LOS PAPIS')).toBeVisible();
+    // Con la sesión del manager del proyecto `setup` la cabecera lleva también Catálogo y Equipo.
     const nav = header.getByRole('navigation', { name: 'Navegación principal' });
-    await expect(nav.getByRole('link')).toHaveText(['Caja', 'Cierre', 'Panel', 'Ajustes']);
+    await expect(nav.getByRole('link')).toHaveText([
+      'Caja',
+      'Cierre',
+      'Catálogo',
+      'Equipo',
+      'Panel',
+      'Ajustes',
+    ]);
     await expect(header.getByRole('combobox', { name: 'Idioma' })).toHaveValue('es');
     await expect(header.getByRole('button', { name: 'Pasar a modo oscuro' })).toBeVisible();
     await expect(page.getByTestId('tricolor-stripe')).toBeVisible();
@@ -52,6 +60,8 @@ test.describe('pantalla de estado', () => {
     await expect(nav.getByRole('link')).toHaveText([
       'Cassa',
       'Chiusura',
+      'Catalogo',
+      'Squadra',
       'Pannello',
       'Impostazioni',
     ]);

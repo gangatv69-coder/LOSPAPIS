@@ -13,8 +13,10 @@ import { Route as IndexRouteImport } from './routes/index';
 import { Route as AccesoRouteImport } from './routes/acceso';
 import { Route as AjustesRouteImport } from './routes/ajustes';
 import { Route as CajaRouteImport } from './routes/caja';
+import { Route as CatalogoRouteImport } from './routes/catalogo';
 import { Route as CierreRouteImport } from './routes/cierre';
 import { Route as ConfigurarRouteImport } from './routes/configurar';
+import { Route as EquipoRouteImport } from './routes/equipo';
 import { Route as PanelRouteImport } from './routes/panel';
 
 const IndexRoute = IndexRouteImport.update({
@@ -37,6 +39,11 @@ const CajaRoute = CajaRouteImport.update({
   path: '/caja',
   getParentRoute: () => rootRouteImport,
 } as any);
+const CatalogoRoute = CatalogoRouteImport.update({
+  id: '/catalogo',
+  path: '/catalogo',
+  getParentRoute: () => rootRouteImport,
+} as any);
 const CierreRoute = CierreRouteImport.update({
   id: '/cierre',
   path: '/cierre',
@@ -45,6 +52,11 @@ const CierreRoute = CierreRouteImport.update({
 const ConfigurarRoute = ConfigurarRouteImport.update({
   id: '/configurar',
   path: '/configurar',
+  getParentRoute: () => rootRouteImport,
+} as any);
+const EquipoRoute = EquipoRouteImport.update({
+  id: '/equipo',
+  path: '/equipo',
   getParentRoute: () => rootRouteImport,
 } as any);
 const PanelRoute = PanelRouteImport.update({
@@ -58,8 +70,10 @@ export interface FileRoutesByFullPath {
   '/acceso': typeof AccesoRoute;
   '/ajustes': typeof AjustesRoute;
   '/caja': typeof CajaRoute;
+  '/catalogo': typeof CatalogoRoute;
   '/cierre': typeof CierreRoute;
   '/configurar': typeof ConfigurarRoute;
+  '/equipo': typeof EquipoRoute;
   '/panel': typeof PanelRoute;
 }
 export interface FileRoutesByTo {
@@ -67,8 +81,10 @@ export interface FileRoutesByTo {
   '/acceso': typeof AccesoRoute;
   '/ajustes': typeof AjustesRoute;
   '/caja': typeof CajaRoute;
+  '/catalogo': typeof CatalogoRoute;
   '/cierre': typeof CierreRoute;
   '/configurar': typeof ConfigurarRoute;
+  '/equipo': typeof EquipoRoute;
   '/panel': typeof PanelRoute;
 }
 export interface FileRoutesById {
@@ -77,8 +93,10 @@ export interface FileRoutesById {
   '/acceso': typeof AccesoRoute;
   '/ajustes': typeof AjustesRoute;
   '/caja': typeof CajaRoute;
+  '/catalogo': typeof CatalogoRoute;
   '/cierre': typeof CierreRoute;
   '/configurar': typeof ConfigurarRoute;
+  '/equipo': typeof EquipoRoute;
   '/panel': typeof PanelRoute;
 }
 export interface FileRouteTypes {
@@ -88,8 +106,10 @@ export interface FileRouteTypes {
     | '/acceso'
     | '/ajustes'
     | '/caja'
+    | '/catalogo'
     | '/cierre'
     | '/configurar'
+    | '/equipo'
     | '/panel';
   fileRoutesByTo: FileRoutesByTo;
   to:
@@ -97,8 +117,10 @@ export interface FileRouteTypes {
     | '/acceso'
     | '/ajustes'
     | '/caja'
+    | '/catalogo'
     | '/cierre'
     | '/configurar'
+    | '/equipo'
     | '/panel';
   id:
     | '__root__'
@@ -106,8 +128,10 @@ export interface FileRouteTypes {
     | '/acceso'
     | '/ajustes'
     | '/caja'
+    | '/catalogo'
     | '/cierre'
     | '/configurar'
+    | '/equipo'
     | '/panel';
   fileRoutesById: FileRoutesById;
 }
@@ -116,8 +140,10 @@ export interface RootRouteChildren {
   AccesoRoute: typeof AccesoRoute;
   AjustesRoute: typeof AjustesRoute;
   CajaRoute: typeof CajaRoute;
+  CatalogoRoute: typeof CatalogoRoute;
   CierreRoute: typeof CierreRoute;
   ConfigurarRoute: typeof ConfigurarRoute;
+  EquipoRoute: typeof EquipoRoute;
   PanelRoute: typeof PanelRoute;
 }
 
@@ -151,6 +177,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CajaRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    '/catalogo': {
+      id: '/catalogo';
+      path: '/catalogo';
+      fullPath: '/catalogo';
+      preLoaderRoute: typeof CatalogoRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/cierre': {
       id: '/cierre';
       path: '/cierre';
@@ -163,6 +196,13 @@ declare module '@tanstack/react-router' {
       path: '/configurar';
       fullPath: '/configurar';
       preLoaderRoute: typeof ConfigurarRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/equipo': {
+      id: '/equipo';
+      path: '/equipo';
+      fullPath: '/equipo';
+      preLoaderRoute: typeof EquipoRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/panel': {
@@ -180,8 +220,10 @@ const rootRouteChildren: RootRouteChildren = {
   AccesoRoute: AccesoRoute,
   AjustesRoute: AjustesRoute,
   CajaRoute: CajaRoute,
+  CatalogoRoute: CatalogoRoute,
   CierreRoute: CierreRoute,
   ConfigurarRoute: ConfigurarRoute,
+  EquipoRoute: EquipoRoute,
   PanelRoute: PanelRoute,
 };
 export const routeTree = rootRouteImport

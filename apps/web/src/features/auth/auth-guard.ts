@@ -47,6 +47,11 @@ export function isAuthenticated(state: AuthState): boolean {
   return state.user !== null && !state.pendingTotp;
 }
 
+/** Manager con la sesión completa: ve Catálogo y Equipo (un barbero o un dispositivo sin usuario, no). */
+export function isManagerSession(state: AuthState): boolean {
+  return isAuthenticated(state) && state.user?.role === 'manager';
+}
+
 /** `next` solo cuando merece la pena volver: nunca para la raíz ni para las rutas públicas. */
 function nextFor(path: string, href: string | undefined): string | undefined {
   if (!href || path === '/' || PUBLIC_PATHS.has(path)) return undefined;

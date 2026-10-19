@@ -8,14 +8,15 @@ import { PinDialog } from '@/components/pin-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/features/auth/use-auth';
+import { CatalogPreview } from '@/features/catalog/catalog-preview';
 
 export const Route = createFileRoute('/caja')({
   component: CajaPage,
 });
 
 /**
- * Caja mínima de LP-05: estado del dispositivo y la firma con PIN ("¿Quién cobra?"). La caja de
- * verdad (servicios, cobro, descuentos) la construye LP-08 encima de este diálogo y su aserción.
+ * Caja: el catálogo que se cobrará (LP-08, solo lectura por ahora), el estado del dispositivo y la
+ * firma con PIN ("¿Quién cobra?"). El cobro de verdad (líneas, descuentos) lo construye LP-09 encima.
  */
 function CajaPage() {
   const { t } = useTranslation();
@@ -24,8 +25,9 @@ function CajaPage() {
   const canSign = device !== null || user !== null;
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-8">
       <h1 className="font-display text-4xl font-bold tracking-wide">{t('nav.register')}</h1>
+      <CatalogPreview />
       <Card data-testid="register-device-card" className="max-w-xl">
         <CardHeader>
           <CardTitle className="font-display text-2xl font-semibold tracking-wide">

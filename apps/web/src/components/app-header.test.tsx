@@ -1,4 +1,4 @@
-import { BRAND_NAME } from '@los-papis/shared';
+import { type AuthState, BRAND_NAME } from '@los-papis/shared';
 import {
   createMemoryHistory,
   createRootRoute,
@@ -15,24 +15,39 @@ import { AppHeader } from '@/components/app-header';
 import { ThemeProvider } from '@/components/theme-provider';
 import i18n from '@/i18n';
 
-function Layout() {
-  return (
-    <ThemeProvider>
-      <AppHeader />
-      <Outlet />
-    </ThemeProvider>
-  );
-}
+const manager: AuthState = {
+  bootstrapNeeded: false,
+  user: {
+    id: '0f6a8d3e-3d0c-4a0b-9c3e-1b2c3d4e5f60',
+    username: 'manager.uno',
+    displayName: 'Manager Uno',
+    role: 'manager',
+    totpEnabled: true,
+    pinSet: true,
+    mustChangePassword: false,
+    recentTotp: false,
+  },
+  pendingTotp: false,
+  device: null,
+};
 
 const Empty = () => null;
 
 /** Router mínimo con las mismas rutas que la app (las pestañas enlazan a ellas), sin devtools ni loaders. */
-function createTestRouter(initialPath: string) {
+function createTestRouter(initialPath: string, auth: AuthState | null) {
+  const Layout = () => (
+    <ThemeProvider>
+      <AppHeader auth={auth} />
+      <Outlet />
+    </ThemeProvider>
+  );
   const rootRoute = createRootRoute({ component: Layout });
   const routeTree = rootRoute.addChildren([
     createRoute({ getParentRoute: () => rootRoute, path: '/', component: Empty }),
     createRoute({ getParentRoute: () => rootRoute, path: '/caja', component: Empty }),
     createRoute({ getParentRoute: () => rootRoute, path: '/cierre', component: Empty }),
+    createRoute({ getParentRoute: () => rootRoute, path: '/catalogo', component: Empty }),
+    createRoute({ getParentRoute: () => rootRoute, path: '/equipo', component: Empty }),
     createRoute({ getParentRoute: () => rootRoute, path: '/panel', component: Empty }),
     createRoute({ getParentRoute: () => rootRoute, path: '/ajustes', component: Empty }),
   ]);
@@ -42,8 +57,8 @@ function createTestRouter(initialPath: string) {
   });
 }
 
-async function renderHeader(initialPath: string) {
-  render(<RouterProvider router={createTestRouter(initialPath)} />);
+async function renderHeader(initialPath: string, auth: AuthState | null = null) {
+  render(<RouterProvider router={createTestRouter(initialPath, auth)} />);
   // La primera navegación del router es asíncrona: se espera a que la cabecera esté montada.
   return within(await screen.findByRole('banner'));
 }
@@ -67,6 +82,31 @@ describe('AppHeader', () => {
     expect(header.getByTestId('tricolor-stripe')).toBeInTheDocument();
     expect(header.getByRole('combobox', { name: 'Idioma' })).toHaveValue('es');
     expect(header.getByRole('button', { name: 'Pasar a modo oscuro' })).toBeInTheDocument();
+  });
+
+  it('un manager ve además Catálogo y Equipo; con la 2FA pendiente, todavía no', async () => {
+    const header = await renderHeader('/', manager);
+    const nav = header.getByRole('navigation', { name: 'Navegación principal' });
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Caja', 'Cierre', 'Catálogo', 'Equipo', 'Panel', 'Ajustes']);
+    expect(within(nav).getByRole('link', { name: 'Catálogo' })).toHaveAttribute(
+      'href',
+      '/catalogo',
+    );
+  });
+
+  it('un barbero ve solo las cuatro pestañas', async () => {
+    const barber: AuthState = {
+      ...manager,
+      user: manager.user ? { ...manager.user, role: 'barber', totpEnabled: false } : null,
+    };
+    const header = await renderHeader('/', barber);
+    const nav = header.getByRole('navigation', { name: 'Navegación principal' });
+    expect(within(nav).getAllByRole('link')).toHaveLength(4);
+    expect(within(nav).queryByRole('link', { name: 'Equipo' })).toBeNull();
   });
 
   it('marca la pestaña de la ruta actual con aria-current="page"', async () => {
