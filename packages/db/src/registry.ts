@@ -15,6 +15,10 @@ export const SHOP_SCOPED_TABLES = [
   'devices',
   'sessions',
   'backup_codes',
+  'photos',
+  'services',
+  'products',
+  'barbers',
 ] as const;
 
 /** Tablas sin shop_id: el registro de barberías. Toda tabla de `public` debe estar en una de las dos listas. */

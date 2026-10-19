@@ -49,4 +49,8 @@ export const SQLSTATE = {
   uniqueViolation: '23505',
   /** foreign_key_violation: la fila apuntada no existe */
   foreignKeyViolation: '23503',
+  /** check_violation: un CHECK de la tabla (precio negativo, duración fuera de rango, dimensiones 0) */
+  checkViolation: '23514',
+  /** restrict_violation: borrar una fila a la que apunta otra con ON DELETE RESTRICT */
+  restrictViolation: '23001',
 } as const;

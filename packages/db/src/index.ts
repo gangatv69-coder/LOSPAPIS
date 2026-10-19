@@ -22,5 +22,6 @@ export * from './migrate.ts';
 export * from './registry.ts';
 export * from './schema/index.ts';
 export * from './seed.ts';
+export * from './seed-catalog.ts';
 export * from './tenant.ts';
 export * from './test-db.ts';
