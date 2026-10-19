@@ -23,6 +23,7 @@
     "db:check": "pnpm --filter @los-papis/db run check",
     "db:migrate": "pnpm --filter @los-papis/db run migrate",
     "db:seed": "pnpm --filter @los-papis/db run seed",
+    "deploy:pruebas": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-pruebas.ps1",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run db:check && pnpm run test && pnpm run e2e"
   },
   "devDependencies": {

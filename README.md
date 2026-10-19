@@ -48,6 +48,7 @@ La base de datos usa los valores de desarrollo de `.env.example` (raíz). Para c
 | `pnpm db:check` | Comprueba la coherencia de la carpeta de migraciones (lo hace también `pnpm check`) |
 | `pnpm --filter @los-papis/api dev` | Solo la API. `…/api build` genera `apps/api/dist/index.mjs` |
 | `pnpm --filter @los-papis/web dev --host` | La web accesible desde el iPad en la misma red |
+| `pnpm deploy:pruebas` | Construye las imágenes en el PC, las sube al VPS y despliega (migraciones, arranque y comprobación). `-Tag <etiqueta> -SkipBuild` vuelve a una versión anterior. Ver "Servidor de pruebas" |
 
 ## Base de datos
 
@@ -96,6 +97,120 @@ Tres servicios, definidos en `compose.yaml` (en la raíz):
 En local no se usan los puertos 80 ni 443. El desarrollo diario se hace con `pnpm dev` (Docker no monta el
 código desde Windows: construye las imágenes finales). Para ver los registros: `docker compose logs -f`.
 
+## Servidor de pruebas
+
+`https://pruebas.37-27-38-218.sslip.io` es el entorno de **pruebas**: el VPS del dueño (37.27.38.218, Ubuntu 26.04,
+2 CPU, 3,8 GB), que comparte con sus otras webs. Producción irá en un servidor dedicado (enero de 2027). Mientras no
+hay dominio, el nombre `*.sslip.io` resuelve a la IP sin configurar DNS; cambiarlo es un paso (más abajo).
+
+Cómo está montado: el nginx del dueño (puertos 80 y 443, certificado de Let's Encrypt que renueva certbot) reenvía
+ese nombre a `127.0.0.1:8090`, donde Docker publica `web` (Caddy: pantallas y `/api/*` hacia `api`). PostgreSQL no
+publica ningún puerto. Todo corre como el usuario `lospapis` (sin root, en el grupo `docker`) desde `/opt/los-papis`
+con `compose.yaml` + `compose.server.yaml` (la capa del servidor: sin puertos en `db`, secretos obligatorios con
+`${VAR:?}`, límites de memoria, `web` solo en `127.0.0.1`). Las imágenes se construyen en el PC con los mismos
+Dockerfiles que CI y se suben por ssh: el VPS no tiene memoria para construir.
+
+### Preparar el servidor (una vez, como root)
+
+```powershell
+cmd /c "ssh lospapis-vps bash -s < infra\server\provision-pruebas.sh"
+```
+
+`infra/server/provision-pruebas.sh` se puede repetir sin miedo (cada paso comprueba antes de cambiar nada): swap de
+2 GB, actualizaciones de seguridad automáticas, Docker CE, usuario `lospapis` con las llaves ssh de root,
+`/opt/los-papis/.env` con contraseñas nuevas de PostgreSQL, sitio `lospapis-pruebas` en nginx y certificado por
+webroot. No toca ufw, sshd ni los otros sitios de nginx. (`cmd /c` porque PowerShell 5.1 añade BOM y CR al redirigir
+un archivo a `ssh`.)
+
+Después, el alias del usuario de despliegue en `C:\Users\<usuario>\.ssh\config` (misma llave que `lospapis-vps`):
+
+```
+Host lospapis-pruebas
+  HostName 37.27.38.218
+  User lospapis
+  IdentityFile C:\Users\<usuario>\.ssh\lospapis_vps
+  IdentitiesOnly yes
+```
+
+`ssh lospapis-pruebas id` tiene que mostrar el grupo `docker`.
+
+### Desplegar y volver atrás
+
+```powershell
+pnpm deploy:pruebas                                 # el commit actual: construye, sube, migra, arranca y comprueba
+pnpm deploy:pruebas -Tag <etiqueta> -SkipBuild      # volver atrás: una etiqueta ya desplegada (no construye ni sube)
+ssh lospapis-pruebas docker image ls los-papis-api  # etiquetas disponibles en el servidor (se conservan las 5 últimas)
+```
+
+`scripts/deploy-pruebas.ps1` etiqueta las imágenes con el commit (`git rev-parse --short=12 HEAD`), las construye con
+`APP_VERSION=<versión>+<etiqueta>`, las sube con `docker save | ssh -C docker load`, copia `compose.yaml`,
+`compose.server.yaml`, `.env.example`, `01-roles.sh` y `deploy-remote.sh` a `/opt/los-papis` y ejecuta allí
+`infra/server/deploy-remote.sh`, que escribe `IMAGE_TAG` en `.env`, genera las claves VAPID la primera vez, hace
+`docker compose up -d --wait` (el servicio `migrate` aplica las migraciones antes de que arranque `api`) y comprueba
+`/api/health` y `/api/push/config`. Si algo falla, imprime `docker compose ps -a` y los últimos registros. Ejecutado
+directamente, `.\scripts\deploy-pruebas.ps1 -Tag <etiqueta> -SkipBuild` admite además `-SshAlias` y `-RemoteDir`.
+
+### Registros y estado
+
+```powershell
+ssh lospapis-pruebas "cd /opt/los-papis && docker compose -f compose.yaml -f compose.server.yaml logs -f api"
+ssh lospapis-pruebas "cd /opt/los-papis && docker compose -f compose.yaml -f compose.server.yaml ps"
+ssh lospapis-pruebas "cd /opt/los-papis && docker compose -f compose.yaml -f compose.server.yaml logs migrate"
+```
+
+Los registros de nginx están en `/var/log/nginx/` (root) y los de Docker se rotan solos (3 × 10 MB por contenedor).
+
+### Secretos
+
+Viven solo en `/opt/los-papis/.env` (propietario `lospapis`, permisos 600): `POSTGRES_PASSWORD`, `DB_OWNER_PASSWORD`
+y `DB_APP_PASSWORD` (generados por `provision-pruebas.sh`), `PUBLIC_URL`, `WEB_PORT`, `LOG_LEVEL`, `IMAGE_TAG` y las
+claves `VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY` (las escribe `deploy-remote.sh`). Ningún script los imprime. Nunca van
+al repositorio: `.env.example` (raíz) documenta los nombres con los valores de desarrollo. Las contraseñas de
+PostgreSQL solo se aplican al crear el volumen `db_data`; cambiarlas después exige `ALTER ROLE` en la base o borrar el
+volumen (`docker compose … down -v`, aceptable en pruebas). Si se borran las líneas `VAPID_*`, el siguiente despliegue
+genera claves nuevas y todos los móviles tienen que volver a activar los avisos.
+
+### Cambiar al dominio real
+
+Cuando haya dominio (`pruebas.<dominio>`; `app.<dominio>` queda reservado para producción):
+
+1. En el DNS del dominio, registro `A` de `pruebas.<dominio>` → `37.27.38.218`. Esperar a que resuelva
+   (`nslookup pruebas.<dominio>`).
+2. `cmd /c "ssh lospapis-vps LP_HOST=pruebas.<dominio> bash -s < infra\server\provision-pruebas.sh"`: pide el
+   certificado nuevo, reescribe el sitio de nginx y pone `PUBLIC_URL=https://pruebas.<dominio>` en `.env`.
+3. `pnpm deploy:pruebas` (o `-Tag <etiqueta actual> -SkipBuild`): la API arranca con el `PUBLIC_URL` nuevo.
+4. Los avisos push hay que volver a activarlos en cada móvil (cambia el origen de la app; la app instalada con el
+   nombre antiguo se instala de nuevo). El certificado antiguo se puede borrar como root con
+   `certbot delete --cert-name pruebas.37-27-38-218.sslip.io`.
+
+## PWA y avisos push
+
+La web se instala como app "LOS PAPIS" (manifiesto `apps/web/public/manifest.webmanifest`, iconos provisionales y
+`apps/web/public/sw.js`, que solo recibe avisos y abre la app al tocarlos; no hay modo sin conexión):
+
+- **iPhone (iOS 16.4 o posterior):** en Safari, Compartir → "Añadir a pantalla de inicio". Los avisos push solo
+  funcionan en la app abierta desde ese icono, nunca en la pestaña de Safari ni en Chrome.
+- **Android:** en Chrome, menú ⋮ → "Instalar aplicación" (los avisos funcionan también sin instalar).
+
+En **Ajustes**, la tarjeta "Avisos en este dispositivo" activa los avisos (suscripción Web Push con la clave pública
+VAPID de `/api/push/config`), envía un aviso de prueba con retardo y muestra si llegó. El procedimiento de prueba y la
+decisión (spike S4 de la arquitectura) están en [docs/spikes/S4.md](docs/spikes/S4.md). Las suscripciones se guardan en
+memoria de la API (es un spike): al redesplegar se pierden, pero la tarjeta vuelve a registrar la del navegador en
+cuanto se abre Ajustes, sin tocar nada.
+
+En local los avisos están desactivados (`/api/push/config` → `{"enabled":false}`) hasta que `.env` (raíz) tenga claves:
+
+```powershell
+pnpm --filter @los-papis/api run build
+cmd /c "node apps\api\dist\vapid-keys.mjs >> .env"   # o: cmd /c "docker run --rm los-papis-api:local node vapid-keys.mjs >> .env"
+docker compose up -d api                              # para pnpm dev, las mismas líneas en apps/api/.env
+```
+
+(`cmd /c` porque el `>>` de PowerShell 5.1 escribiría el archivo en UTF-16.) Apple y Google exigen un sujeto VAPID
+`https:` o `mailto:`: en local `PUBLIC_URL` es `http://localhost:8080`, así que hace falta además una línea
+`VAPID_SUBJECT=https://pruebas.37-27-38-218.sslip.io` (o `mailto:<correo>`) en el mismo `.env`. En el servidor el
+sujeto es `PUBLIC_URL`.
+
 ## Estructura
 
 ```
@@ -103,8 +218,9 @@ apps/web               pantallas (React 19, Vite 8, TanStack Router y Query, Tai
 apps/api               servidor (Node 26, Hono 4, Zod 4, pino)
 packages/shared        lo que comparten servidor y pantallas: esquemas Zod, marca, dinero en céntimos, hora de Roma y día de caja
 packages/db            esquema Drizzle, migraciones SQL, roles owner/app y patrones (solo-crece, aislamiento por barbería)
-infra/                 Dockerfiles, Caddyfile y el script de roles de PostgreSQL; compose.yaml está en la raíz
-docs/                  tickets, maqueta
+infra/                 Dockerfiles, Caddyfile, script de roles de PostgreSQL y scripts del servidor de pruebas (infra/server); compose.yaml y compose.server.yaml están en la raíz
+scripts/               deploy-pruebas.ps1: despliegue al servidor de pruebas desde el PC (pnpm deploy:pruebas)
+docs/                  tickets, maqueta, spikes (S4: avisos push)
 ```
 
 ## Idiomas y diseño
