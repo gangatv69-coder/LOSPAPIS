@@ -1,7 +1,8 @@
 import { authStateSchema } from '@los-papis/shared';
-import { type Browser, expect, type Locator, type Page, test } from '@playwright/test';
+import { type Browser, expect, type Page, test } from '@playwright/test';
 
 import { CSRF_HEADERS, type E2eCredentials, requireCredentials, WEB_ORIGIN } from './auth-files.ts';
+import { typePin } from './pin.ts';
 import { nextTotpCode } from './totp-codes.ts';
 
 // Los textos salen de src/locales/es.json: si cambian allí, cambian aquí.
@@ -38,13 +39,6 @@ async function answerReauthIfAsked(page: Page): Promise<void> {
   await dialog.getByTestId('totp-code').fill(await nextTotpCode());
   await dialog.getByTestId('totp-submit').click();
   await expect(dialog).toBeHidden();
-}
-
-/** Teclea un PIN en el diálogo "¿Quién cobra?" pulsando las teclas de la maqueta. */
-async function typePin(dialog: Locator, pin: string): Promise<void> {
-  for (const digit of pin) {
-    await dialog.getByRole('button', { name: digit, exact: true }).click();
-  }
 }
 
 /** Contexto nuevo con las mismas opciones del proyecto (baseURL, idioma, zona horaria) y sin cookies. */

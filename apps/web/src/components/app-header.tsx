@@ -8,9 +8,9 @@ import { Wordmark } from '@/components/brand/wordmark';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
-import { isManagerSession } from '@/features/auth/auth-guard';
+import { isBarberSession, isManagerSession } from '@/features/auth/auth-guard';
 
-/** Pestañas de la cabecera. `to` está tipado por el registro del router: la ruta tiene que existir. */
+/** Pestañas de la cabecera (modo caja: dispositivo sin usuario). `to` está tipado por el registro del router. */
 const baseTabs = [
   { to: '/caja', key: 'nav.register' },
   { to: '/cierre', key: 'nav.close' },
@@ -18,7 +18,7 @@ const baseTabs = [
   { to: '/ajustes', key: 'nav.settings' },
 ] as const;
 
-/** Un manager gestiona además el catálogo y el equipo (LP-08); barberos y dispositivos no las ven. */
+/** Un manager gestiona además el catálogo y el equipo (LP-08). */
 const managerTabs = [
   { to: '/caja', key: 'nav.register' },
   { to: '/cierre', key: 'nav.close' },
@@ -27,6 +27,18 @@ const managerTabs = [
   { to: '/panel', key: 'nav.dashboard' },
   { to: '/ajustes', key: 'nav.settings' },
 ] as const;
+
+/** Un barbero no cobra ni cierra (LP-09): solo su panel y sus ajustes. */
+const barberTabs = [
+  { to: '/panel', key: 'nav.dashboard' },
+  { to: '/ajustes', key: 'nav.settings' },
+] as const;
+
+function tabsFor(auth: AuthState | null) {
+  if (auth && isManagerSession(auth)) return managerTabs;
+  if (auth && isBarberSession(auth)) return barberTabs;
+  return baseTabs;
+}
 
 const focusRing = 'outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50';
 
@@ -52,7 +64,7 @@ export function AppHeader({
   const { t } = useTranslation();
   const user = auth?.user ?? null;
   const device = auth?.device ?? null;
-  const tabs = auth && isManagerSession(auth) ? managerTabs : baseTabs;
+  const tabs = tabsFor(auth);
 
   return (
     // Relleno superior = zona segura: en la app instalada en iOS (barra de estado translúcida) el

@@ -92,6 +92,20 @@ describe('guardRoute', () => {
     const barber: SessionUser = { ...manager, role: 'barber', totpEnabled: false, pinSet: false };
     expect(guardRoute(state({ user: barber }), '/')).toEqual({ kind: 'allow' });
   });
+
+  it('un barbero sin dispositivo no entra en la caja ni en el cierre; con la cookie de dispositivo sí', () => {
+    const barber: SessionUser = { ...manager, role: 'barber', totpEnabled: false, pinSet: false };
+    const alone = state({ user: barber });
+    expect(guardRoute(alone, '/caja')).toEqual({ kind: 'home' });
+    expect(guardRoute(alone, '/cierre/')).toEqual({ kind: 'home' });
+    expect(guardRoute(alone, '/panel')).toEqual({ kind: 'allow' });
+    expect(guardRoute(alone, '/ajustes')).toEqual({ kind: 'allow' });
+    const onDevice = state({ user: barber, device });
+    expect(guardRoute(onDevice, '/caja')).toEqual({ kind: 'allow' });
+    expect(guardRoute(onDevice, '/cierre')).toEqual({ kind: 'allow' });
+    // Un manager entra siempre.
+    expect(guardRoute(state({ user: manager }), '/caja')).toEqual({ kind: 'allow' });
+  });
 });
 
 describe('utilidades del guardia', () => {

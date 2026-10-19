@@ -201,7 +201,7 @@
     "deviceMissing": "Questo dispositivo non è autorizzato come cassa.",
     "goAuthorize": "Autorizzalo nelle Impostazioni",
     "cardTitle": "Dispositivo di cassa",
-    "cardSubtitle": "Per ora, lo stato del dispositivo e la firma con PIN. La cassa completa (servizi e incasso) arriva nel prossimo passo."
+    "cardSubtitle": "Stato del dispositivo di cassa e prova della firma con PIN."
   },
   "devices": {
     "sectionTitle": "Dispositivi",
@@ -309,14 +309,87 @@
     "errors": {
       "notFound": "Non esiste più: ricarica la pagina.",
       "validation": "Controlla i dati del modulo."
+    }
+  },
+  "register": {
+    "barber": "Barbiere",
+    "noBarbers": "Non c'è ancora nessun barbiere nella squadra.",
+    "noServices": "Non c'è ancora nessun servizio nel catalogo.",
+    "noProducts": "Non c'è ancora nessun prodotto nel catalogo.",
+    "tapToAdd": "Tocca per aggiungere all'incasso",
+    "inCart_one": "{{count}} nell'incasso",
+    "inCart_other": "{{count}} nell'incasso",
+    "cart": {
+      "title": "Incasso",
+      "clear": "Svuota",
+      "empty": "Tocca un servizio o un prodotto per aggiungerlo all'incasso.",
+      "chooseBarber": "Scegli il barbiere dell'incasso.",
+      "product": "Prodotto",
+      "decrement": "Un'unità in meno di {{name}}",
+      "increment": "Un'unità in più di {{name}}",
+      "quantity": "Quantità di {{name}}",
+      "total": "Totale",
+      "method": "Modalità di pagamento",
+      "cash": "Contanti",
+      "card": "Carta",
+      "tendered": "Consegna il cliente",
+      "exact": "Esatto",
+      "otherAmount": "Altro importo",
+      "tenderShort": "L'importo consegnato non arriva al totale.",
+      "change": "Resto",
+      "charge": "Incassa {{total}}",
+      "saving": "Salvataggio dell'incasso…"
     },
-    "preview": {
-      "title": "Catalogo",
-      "note": "Anteprima: l'incasso arriva nel prossimo passo.",
-      "barbers": "Barbiere",
-      "noBarbers": "Non c'è ancora nessun barbiere nella squadra.",
-      "noServices": "Non c'è ancora nessun servizio nel catalogo.",
-      "noProducts": "Non c'è ancora nessun prodotto nel catalogo."
+    "pinFor": "Incasso di {{total}}",
+    "networkFailed": "Impossibile salvare l'incasso: il server non risponde. Riprova lo stesso incasso; non verrà mai duplicato.",
+    "retry": "Riprova",
+    "cancelRetry": "Annulla",
+    "done": {
+      "title": "Incasso salvato",
+      "idempotent": "Questo incasso era già salvato: non è stato duplicato.",
+      "change": "Resto",
+      "receiptHint": "Batti l'importo sul registratore e, se vuoi, salva qui il numero dello scontrino.",
+      "receiptLabel": "N. scontrino (facoltativo)",
+      "receiptSave": "Salva",
+      "receiptSaved": "Numero di scontrino salvato",
+      "receiptStored": "Scontrino n. {{number}}",
+      "newSale": "Nuovo incasso"
+    },
+    "fiscal": {
+      "line": "Registratore: {{total}} · {{method}}",
+      "method": {
+        "cash": "CONTANTI",
+        "card": "CARTA"
+      }
+    },
+    "today": {
+      "title": "Incassi di oggi",
+      "subtitle": "Solo consultazione: gli incassi non si modificano né si cancellano.",
+      "loading": "Caricamento…",
+      "empty": "Non c'è ancora nessun incasso oggi.",
+      "columns": {
+        "time": "Ora",
+        "lines": "Incasso",
+        "barber": "Barbiere",
+        "payment": "Pagamento",
+        "manager": "Manager",
+        "total": "Importo"
+      },
+      "receipt": "Scontrino n. {{number}}",
+      "count_one": "{{count}} incasso",
+      "count_other": "{{count}} incassi",
+      "cash": "Contanti {{amount}}",
+      "card": "Carta {{amount}}"
+    },
+    "errors": {
+      "pinAssertionInvalid": "La firma del PIN è scaduta: scrivi di nuovo il PIN.",
+      "totalMismatch": "Un prezzo è cambiato da quando hai iniziato: controlla il totale e incassa di nuovo.",
+      "tenderTooLow": "L'importo consegnato non arriva al totale.",
+      "saleConflict": "Questo incasso era già stato salvato con un altro contenuto: inizia un nuovo incasso.",
+      "catalogItemUnavailable": "Un servizio o prodotto non è più nel catalogo: è stato tolto dall'incasso.",
+      "barberUnavailable": "Quel barbiere non è più attivo: scegline un altro.",
+      "receiptRecorded": "Questo incasso ha già un numero di scontrino.",
+      "deviceRequired": "Per incassare accedi con il tuo account di manager o usa un dispositivo autorizzato."
     }
   },
   "services": {

@@ -8,7 +8,7 @@ import {
   fetchServices,
 } from '@/features/catalog/catalog.api';
 
-/** Lo que pinta la caja: activos en orden. Lo comparten /caja y, más adelante, el cobro (LP-09). */
+/** Lo que pinta la caja: activos en orden. Lo leen la rejilla del cobro y la lista de cobros del día. */
 export const catalogQueryOptions = queryOptions({
   queryKey: ['catalog'],
   queryFn: fetchCatalog,

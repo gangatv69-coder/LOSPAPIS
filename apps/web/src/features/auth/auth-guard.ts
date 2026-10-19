@@ -85,7 +85,14 @@ export function guardRoute(state: AuthState, pathname: string, href?: string): G
   if (path === '/ajustes') return ALLOW;
   if (user.mustChangePassword) return { kind: 'settings', paso: 'contrasena' };
   if (user.role === 'manager' && !user.totpEnabled) return { kind: 'settings', paso: '2fa' };
+  // Un barbero no cobra ni cierra. Con la cookie de dispositivo la caja sí funciona: el PIN del manager es la barrera.
+  if (user.role === 'barber' && !state.device && DEVICE_PATHS.has(path)) return { kind: 'home' };
   return ALLOW;
+}
+
+/** Barbero con la sesión completa: solo ve Panel y Ajustes (la caja y el cierre son de los managers). */
+export function isBarberSession(state: AuthState): boolean {
+  return isAuthenticated(state) && state.user?.role === 'barber';
 }
 
 /** Destino seguro de ?next=: solo rutas relativas de esta app ("/ajustes?paso=2fa"); lo demás, el inicio. */

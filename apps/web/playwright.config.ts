@@ -49,8 +49,10 @@ export default defineConfig({
     },
     {
       // Descriptor oficial de Playwright 1.64.1: 1194x834, deviceScaleFactor 2, isMobile y hasTouch.
+      // Corre DESPUÉS de desktop: auth.spec.ts bloquea allí el PIN del manager cinco veces, y los cobros
+      // con PIN del iPad (register.spec.ts) no pueden coincidir con ese bloqueo.
       name: 'ipad-landscape',
-      dependencies: ['setup'],
+      dependencies: ['setup', 'desktop'],
       use: {
         ...devices['iPad Pro 11 landscape'],
         // El descriptor trae defaultBrowserType 'webkit'. En LP-01 solo se instala Chromium.

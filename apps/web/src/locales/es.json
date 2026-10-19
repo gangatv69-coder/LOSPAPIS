@@ -201,7 +201,7 @@
     "deviceMissing": "Este dispositivo no está autorizado como caja.",
     "goAuthorize": "Autorizarlo en Ajustes",
     "cardTitle": "Dispositivo de caja",
-    "cardSubtitle": "De momento, el estado del dispositivo y la firma con PIN. La caja completa (servicios y cobro) llega en el siguiente paso."
+    "cardSubtitle": "Estado del dispositivo de caja y prueba de la firma con PIN."
   },
   "devices": {
     "sectionTitle": "Dispositivos",
@@ -309,14 +309,87 @@
     "errors": {
       "notFound": "Eso ya no existe: recarga la página.",
       "validation": "Revisa los datos del formulario."
+    }
+  },
+  "register": {
+    "barber": "Barbero",
+    "noBarbers": "Todavía no hay barberos en el equipo.",
+    "noServices": "Todavía no hay servicios en el catálogo.",
+    "noProducts": "Todavía no hay productos en el catálogo.",
+    "tapToAdd": "Toca para añadir al cobro",
+    "inCart_one": "{{count}} en el cobro",
+    "inCart_other": "{{count}} en el cobro",
+    "cart": {
+      "title": "Cobro",
+      "clear": "Vaciar",
+      "empty": "Toca un servicio o un producto para añadirlo al cobro.",
+      "chooseBarber": "Elige el barbero del cobro.",
+      "product": "Producto",
+      "decrement": "Una unidad menos de {{name}}",
+      "increment": "Una unidad más de {{name}}",
+      "quantity": "Cantidad de {{name}}",
+      "total": "Total",
+      "method": "Forma de pago",
+      "cash": "Efectivo",
+      "card": "Tarjeta",
+      "tendered": "Entrega el cliente",
+      "exact": "Exacto",
+      "otherAmount": "Otro importe",
+      "tenderShort": "Lo entregado no llega al total.",
+      "change": "Vuelto",
+      "charge": "Cobrar {{total}}",
+      "saving": "Guardando el cobro…"
     },
-    "preview": {
-      "title": "Catálogo",
-      "note": "Vista previa: el cobro llega en el siguiente paso.",
-      "barbers": "Barbero",
-      "noBarbers": "Todavía no hay barberos en el equipo.",
-      "noServices": "Todavía no hay servicios en el catálogo.",
-      "noProducts": "Todavía no hay productos en el catálogo."
+    "pinFor": "Cobro de {{total}}",
+    "networkFailed": "No se ha podido guardar el cobro: el servidor no responde. Reintenta el mismo cobro; nunca se duplicará.",
+    "retry": "Reintentar",
+    "cancelRetry": "Cancelar",
+    "done": {
+      "title": "Cobro guardado",
+      "idempotent": "Este cobro ya estaba guardado: no se ha duplicado.",
+      "change": "Vuelto",
+      "receiptHint": "Marca el importe en el registratore y, si quieres, guarda aquí el número del recibo.",
+      "receiptLabel": "N.º de recibo (opcional)",
+      "receiptSave": "Guardar",
+      "receiptSaved": "Número de recibo guardado",
+      "receiptStored": "Recibo n.º {{number}}",
+      "newSale": "Nuevo cobro"
+    },
+    "fiscal": {
+      "line": "Registratore: {{total}} · {{method}}",
+      "method": {
+        "cash": "EFECTIVO",
+        "card": "TARJETA"
+      }
+    },
+    "today": {
+      "title": "Cobros de hoy",
+      "subtitle": "Solo consulta: los cobros no se editan ni se borran.",
+      "loading": "Cargando…",
+      "empty": "Todavía no hay cobros hoy.",
+      "columns": {
+        "time": "Hora",
+        "lines": "Cobro",
+        "barber": "Barbero",
+        "payment": "Pago",
+        "manager": "Manager",
+        "total": "Importe"
+      },
+      "receipt": "Recibo n.º {{number}}",
+      "count_one": "{{count}} cobro",
+      "count_other": "{{count}} cobros",
+      "cash": "Efectivo {{amount}}",
+      "card": "Tarjeta {{amount}}"
+    },
+    "errors": {
+      "pinAssertionInvalid": "La firma del PIN ha caducado: vuelve a escribir el PIN.",
+      "totalMismatch": "Un precio ha cambiado desde que empezaste: revisa el total y vuelve a cobrar.",
+      "tenderTooLow": "Lo entregado no llega al total.",
+      "saleConflict": "Este cobro ya se había guardado con otro contenido: empieza un cobro nuevo.",
+      "catalogItemUnavailable": "Un servicio o producto ya no está en el catálogo: se ha quitado del cobro.",
+      "barberUnavailable": "Ese barbero ya no está activo: elige otro.",
+      "receiptRecorded": "Este cobro ya tiene número de recibo.",
+      "deviceRequired": "Para cobrar entra con tu cuenta de manager o usa un dispositivo autorizado."
     }
   },
   "services": {

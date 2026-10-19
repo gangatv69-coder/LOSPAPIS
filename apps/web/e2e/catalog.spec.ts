@@ -115,26 +115,24 @@ test.describe('catálogo y equipo', () => {
 
   test('la caja enseña las casillas del catálogo y los chips de los barberos', async ({ page }) => {
     await page.goto('/caja');
-    const preview = page.getByTestId('catalog-preview');
-    await expect(
-      preview.getByText('Vista previa: el cobro llega en el siguiente paso.'),
-    ).toBeVisible();
+    const register = page.getByTestId('register');
+    await expect(register.getByText('Toca para añadir al cobro')).toBeVisible();
 
-    const tile = preview.locator('[data-testid="catalog-service"][data-name="Corte clásico"]');
+    const tile = register.locator('[data-testid="catalog-service"][data-name="Corte clásico"]');
     await expect(tile).toBeVisible();
     await expect(tile.getByText('30 min')).toBeVisible();
     await expect(tile.getByText('15,00 €')).toBeVisible();
 
-    await expect(preview.locator('[data-testid="catalog-barber"][data-code="B1"]')).toContainText(
+    await expect(register.locator('[data-testid="catalog-barber"][data-code="B1"]')).toContainText(
       'Barbero',
     );
-    await expect(preview.locator('[data-testid="catalog-barber"][data-code="B2"]')).toContainText(
+    await expect(register.locator('[data-testid="catalog-barber"][data-code="B2"]')).toContainText(
       'Barbero 2',
     );
 
-    await preview.getByTestId('catalog-preview-tab-products').click();
+    await register.getByTestId('catalog-preview-tab-products').click();
     await expect(
-      preview.locator('[data-testid="catalog-product"][data-name="Cera mate"]'),
+      register.locator('[data-testid="catalog-product"][data-name="Cera mate"]'),
     ).toContainText('12,00 €');
   });
 });

@@ -98,15 +98,43 @@ describe('AppHeader', () => {
     );
   });
 
-  it('un barbero ve solo las cuatro pestañas', async () => {
+  it('un barbero ve solo Panel y Ajustes (ni la caja ni el cierre)', async () => {
     const barber: AuthState = {
       ...manager,
       user: manager.user ? { ...manager.user, role: 'barber', totpEnabled: false } : null,
     };
     const header = await renderHeader('/', barber);
     const nav = header.getByRole('navigation', { name: 'Navegación principal' });
-    expect(within(nav).getAllByRole('link')).toHaveLength(4);
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Panel', 'Ajustes']);
+    expect(within(nav).queryByRole('link', { name: 'Caja' })).toBeNull();
     expect(within(nav).queryByRole('link', { name: 'Equipo' })).toBeNull();
+  });
+
+  it('un dispositivo de caja sin usuario ve las cuatro pestañas de siempre', async () => {
+    const deviceOnly: AuthState = {
+      bootstrapNeeded: false,
+      user: null,
+      pendingTotp: false,
+      device: {
+        id: '7c9e6679-7425-40de-944b-e07fc1f90ae7',
+        name: 'iPad de caja',
+        kind: 'ipad',
+        authorizedAt: '2026-10-19T09:00:00+02:00',
+        lastSeenAt: null,
+        revokedAt: null,
+      },
+    };
+    const header = await renderHeader('/caja', deviceOnly);
+    const nav = header.getByRole('navigation', { name: 'Navegación principal' });
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Caja', 'Cierre', 'Panel', 'Ajustes']);
   });
 
   it('marca la pestaña de la ruta actual con aria-current="page"', async () => {
