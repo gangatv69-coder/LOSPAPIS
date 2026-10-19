@@ -5,8 +5,9 @@
 # Antes, el script del PC ha cargado las imágenes los-papis-api:<etiqueta> y los-papis-web:<etiqueta> con
 # "docker save | ssh docker load" y ha copiado compose.yaml, compose.server.yaml, 01-roles.sh y este archivo.
 # Aquí NO se construye nada (el VPS comparte 3,8 GB con otras apps): solo se arranca lo que ya está cargado.
-# Pasos: imágenes presentes -> .env (IMAGE_TAG y claves VAPID) -> docker compose up --wait (migraciones incluidas)
-# -> /api/health y /api/push/config por 127.0.0.1 -> limpieza de imágenes antiguas -> estado.
+# Pasos: imágenes presentes -> .env (IMAGE_TAG, claves VAPID y secretos de acceso) -> docker compose up --wait
+# (migraciones incluidas) -> /api/health, /api/push/config y /api/auth/me por 127.0.0.1 -> limpieza de imágenes
+# antiguas -> estado.
 # Secretos: viven en .env (600, lo creó provision-pruebas.sh). Este script nunca los imprime.
 set -Eeuo pipefail
 
@@ -74,6 +75,7 @@ main() {
   [[ -f infra/postgres/init/01-roles.sh ]] || die "falta infra/postgres/init/01-roles.sh en $LP_DIR"
   [[ -f .env ]] || die "falta $LP_DIR/.env: ejecuta antes infra/server/provision-pruebas.sh como root"
   command -v docker >/dev/null || die "falta docker (lo instala provision-pruebas.sh)"
+  command -v openssl >/dev/null || die "falta openssl (genera los secretos de acceso)"
   docker info >/dev/null 2>&1 || die "no puedo hablar con Docker: ¿está $(id -un) en el grupo docker? (vuelve a entrar por ssh tras la provisión)"
 
   log "Imágenes los-papis-api:$IMAGE_TAG y los-papis-web:$IMAGE_TAG"
@@ -109,6 +111,23 @@ main() {
   fi
   chmod 600 .env
 
+  log ".env: secretos de acceso (AUTH_SECRET y AUTH_ENCRYPTION_KEY)"
+  # Van de openssl directamente al archivo: nunca por pantalla ni por los registros. Solo se generan si faltan:
+  # cambiar AUTH_ENCRYPTION_KEY dejaría ilegibles los secretos TOTP ya guardados en la base.
+  if grep -qE '^AUTH_SECRET=.+' .env; then
+    info "AUTH_SECRET ya presente"
+  else
+    set_env_var .env AUTH_SECRET "$(openssl rand -base64 48 | tr -d '\n')"
+    info "AUTH_SECRET nuevo guardado en .env"
+  fi
+  if grep -qE '^AUTH_ENCRYPTION_KEY=.+' .env; then
+    info "AUTH_ENCRYPTION_KEY ya presente"
+  else
+    set_env_var .env AUTH_ENCRYPTION_KEY "$(openssl rand -base64 32 | tr -d '\n')"
+    info "AUTH_ENCRYPTION_KEY nueva guardada en .env"
+  fi
+  chmod 600 .env
+
   log "docker compose up (migraciones, api y web)"
   DEPLOY_STARTED=1
   # compose lee .env de esta carpeta para los ${VAR} de compose.server.yaml; --wait espera a que todo esté sano
@@ -126,6 +145,13 @@ main() {
     die "/api/push/config no dice \"enabled\":true (la API no ha cargado las claves VAPID): $push_config"
   fi
   info "/api/push/config: $push_config"
+  # Acceso (LP-05): la API ha conectado con la base y ha resuelto la barbería. No imprime nada sensible.
+  local auth_state
+  auth_state="$(curl_retry "$base/api/auth/me")"
+  if [[ "$auth_state" != *'"bootstrapNeeded":'* ]]; then
+    die "/api/auth/me no responde con el estado de acceso (¿base de datos o APP_SHOP_SLUG?): $auth_state"
+  fi
+  info "/api/auth/me: $auth_state"
 
   log "Limpieza: se conservan las 5 etiquetas más recientes de cada imagen"
   local repo tag

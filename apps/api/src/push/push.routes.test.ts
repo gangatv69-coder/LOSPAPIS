@@ -7,12 +7,11 @@ import {
 } from '@los-papis/shared';
 import { describe, expect, it, vi } from 'vitest';
 
+import { offlineAuthDeps, silentLog } from '../../test/setup/offline-auth.ts';
 import { createApp } from '../app.ts';
 import type { PushDeps } from './push.routes.ts';
 import type { PushSender, PushSendResult } from './push-sender.ts';
 import { InMemoryPushStore } from './push-store.ts';
-
-const silentLog = { info: () => {}, error: () => {} };
 
 const subscription: PushSubscriptionJson = {
   endpoint: 'https://push.example.test/abc',
@@ -48,7 +47,13 @@ const makeDeps = (sender: PushSender, overrides: Partial<PushDeps> = {}) => {
 };
 
 const appWith = (push: PushDeps | undefined) =>
-  createApp({ version: '1.2.3', uptimeSeconds: () => 0, log: silentLog, push });
+  createApp({
+    version: '1.2.3',
+    uptimeSeconds: () => 0,
+    log: silentLog,
+    push,
+    auth: offlineAuthDeps(),
+  });
 
 const json = (body: unknown, method = 'POST') =>
   new Request('http://localhost/', {
@@ -258,7 +263,13 @@ describe('con claves VAPID', () => {
   it('si el sender lanza, la API no cae y lastDelivery recoge el error', async () => {
     const log = { info: vi.fn(), error: vi.fn() };
     const { deps, pending } = makeDeps(fakeSender(new Error('se rompió')));
-    const app = createApp({ version: '1.2.3', uptimeSeconds: () => 0, log, push: deps });
+    const app = createApp({
+      version: '1.2.3',
+      uptimeSeconds: () => 0,
+      log,
+      push: deps,
+      auth: offlineAuthDeps(),
+    });
     await post(app, '/api/push/subscriptions', { subscription });
     const res = await post(app, '/api/push/test', { endpoint: subscription.endpoint });
     expect(res.status).toBe(202);

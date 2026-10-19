@@ -2,6 +2,14 @@ import { type Health, TIMEZONE, toRomeIso } from '@los-papis/shared';
 import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 
+import { createAuthRoutes } from './auth/auth.routes.ts';
+import { csrfGuard } from './auth/csrf.ts';
+import { createDeviceRoutes } from './auth/devices.routes.ts';
+import { AuthError } from './auth/errors.ts';
+import { attachAuth } from './auth/middleware.ts';
+import { createAuthService } from './auth/service.ts';
+import type { AuthDeps, AuthEnv } from './auth/types.ts';
+import { createUserRoutes } from './auth/users.routes.ts';
 import { createPushRoutes, type PushDeps } from './push/push.routes.ts';
 
 /** Lo mínimo que la app necesita de un logger; evita que `app.ts` dependa de pino o de Node. */
@@ -16,9 +24,11 @@ export type AppDeps = {
   log: AppLogger;
   /** Avisos push (prueba S4). Sin claves VAPID queda undefined y /api/push/config responde enabled: false. */
   push?: PushDeps;
+  /** Acceso (LP-05): base de datos, barbería del despliegue y secretos. */
+  auth: AuthDeps;
 };
 
-export const createApp = ({ version, uptimeSeconds, log, push }: AppDeps) => {
+export const createApp = ({ version, uptimeSeconds, log, push, auth }: AppDeps) => {
   // Rutas encadenadas: así `typeof app` conserva los tipos para hc() en apps/web.
   const health = new Hono().get('/health', (c) => {
     const body: Health = {
@@ -31,7 +41,9 @@ export const createApp = ({ version, uptimeSeconds, log, push }: AppDeps) => {
     return c.json(body);
   });
 
-  const app = new Hono()
+  const authService = createAuthService(auth);
+
+  const app = new Hono<AuthEnv>()
     // Log estructurado por petición (sustituye a hono/logger, que solo imprime texto).
     .use(async (c, next) => {
       const startedAt = performance.now();
@@ -48,16 +60,25 @@ export const createApp = ({ version, uptimeSeconds, log, push }: AppDeps) => {
     })
     .onError((err, c) => {
       if (err instanceof HTTPException) return err.getResponse();
+      // Errores de negocio del acceso: código estable y estado HTTP del plan.
+      if (err instanceof AuthError) return c.json(err.body(), err.status);
       log.error({ err, path: c.req.path }, 'error no controlado');
       return c.json({ error: 'internal_error' }, 500);
     })
     .notFound((c) => c.json({ error: 'not_found' }, 404))
+    // Toda la API: guardia CSRF para métodos que cambian cosas y, después, quién llama según las cookies.
+    .use('/api/*', csrfGuard({ publicOrigin: auth.publicOrigin }))
+    .use('/api/*', attachAuth(auth))
     // GET /health: criterio literal de LP-01, healthcheck de Docker y espera de Playwright.
     .route('/', health)
     // GET /api/health: lo que consume la pantalla (el proxy de Vite y Caddy no quitan el prefijo).
     .route('/api', health)
     // /api/push/*: suscripciones y aviso de prueba de la tarjeta de Ajustes.
-    .route('/api/push', createPushRoutes(push, log));
+    .route('/api/push', createPushRoutes(push, log))
+    // Acceso (LP-05): identidad y 2FA, dispositivos de caja y cuentas.
+    .route('/api/auth', createAuthRoutes(auth, authService))
+    .route('/api/devices', createDeviceRoutes(auth, authService))
+    .route('/api/users', createUserRoutes(authService));
 
   return app;
 };

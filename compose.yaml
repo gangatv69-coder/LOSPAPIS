@@ -68,7 +68,8 @@ services:
       dockerfile: infra/docker/api.Dockerfile
       args:
         APP_VERSION: 0.1.0
-    # .env.example deja VAPID_* vacías (avisos push desactivados); .env, si existe, aporta las claves del PC.
+    # .env.example deja VAPID_* vacías (avisos push desactivados) y aporta DB_APP_PASSWORD, AUTH_SECRET,
+    # AUTH_ENCRYPTION_KEY y APP_SHOP_SLUG de desarrollo; .env, si existe, los sustituye.
     env_file:
       - path: .env.example
         required: true
@@ -79,6 +80,10 @@ services:
       PORT: "3000"
       LOG_LEVEL: info
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+      # La base, por la red interna: la DATABASE_URL del env_file apunta al 127.0.0.1 del PC (pnpm dev y
+      # pruebas), así que se vacía y la API construye la suya con DB_HOST + DB_APP_PASSWORD + POSTGRES_DB.
+      DATABASE_URL: ""
+      DB_HOST: db
     depends_on:
       # Arranca cuando las migraciones han terminado bien (y migrate ya esperó a que db estuviera healthy).
       migrate:

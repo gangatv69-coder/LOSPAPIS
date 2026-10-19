@@ -40,6 +40,13 @@ services:
       PUBLIC_URL: ${PUBLIC_URL:?Falta PUBLIC_URL en .env}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:?Faltan las claves VAPID en .env (las genera deploy-remote.sh)}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:?Faltan las claves VAPID en .env (las genera deploy-remote.sh)}
+      # Base de datos (rol app) por la red interna y secretos de acceso (LP-05); los genera deploy-remote.sh.
+      DB_HOST: db
+      POSTGRES_DB: los_papis
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?Falta DB_APP_PASSWORD en .env}
+      AUTH_SECRET: ${AUTH_SECRET:?Falta AUTH_SECRET en .env (lo genera deploy-remote.sh)}
+      AUTH_ENCRYPTION_KEY: ${AUTH_ENCRYPTION_KEY:?Falta AUTH_ENCRYPTION_KEY en .env (la genera deploy-remote.sh)}
+      APP_SHOP_SLUG: ${APP_SHOP_SLUG:-los-papis}
     deploy:
       resources:
         limits:

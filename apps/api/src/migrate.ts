@@ -1,14 +1,14 @@
 import { join } from 'node:path';
 
-import { runMigrations } from '@los-papis/db';
+import { runMigrations, seedShop } from '@los-papis/db';
 import * as z from 'zod';
 
 import { optionalVar } from './env.ts';
 
 /**
  * Entrada del bundle dist/migrate.mjs: el servicio `migrate` de compose lo ejecuta (`node migrate.mjs`) con la
- * MISMA imagen que la API y antes de arrancarla. Conecta como owner y aplica las migraciones de ./drizzle
- * (packages/db/drizzle, copiada junto al bundle al construir la imagen).
+ * MISMA imagen que la API y antes de arrancarla. Conecta como owner, aplica las migraciones de ./drizzle
+ * (packages/db/drizzle, copiada junto al bundle al construir la imagen) y deja creada la barbería.
  * NO usa DATABASE_URL_OWNER de .env.example: apunta al 127.0.0.1 del PC, no al servicio `db`.
  */
 
@@ -60,6 +60,10 @@ const main = async (): Promise<void> => {
   console.log(`Aplicando migraciones de ${folder} en ${describe(url)}`);
   const total = await runMigrations(url.toString(), folder);
   console.log(`Migraciones al día: ${total} registradas`);
+  // La barbería del despliegue (APP_SHOP_SLUG, "los-papis"): la API no arranca sin su fila en `shops` y en el
+  // servidor nadie ejecuta pnpm db:seed, así que la deja lista el mismo servicio que migra. Idempotente.
+  const shop = await seedShop(url.toString());
+  console.log(`Barbería "${shop.slug}" lista`);
 };
 
 /** Drizzle envuelve el error de pg ("Failed query: …") y deja la causa real (contraseña, conexión) en `cause`. */

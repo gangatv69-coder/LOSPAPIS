@@ -1,11 +1,16 @@
 import { healthSchema } from '@los-papis/shared';
 import { describe, expect, it } from 'vitest';
 
+import { offlineAuthDeps, silentLog } from '../test/setup/offline-auth.ts';
 import { createApp } from './app.ts';
 
-const silentLog = { info: () => {}, error: () => {} };
-
-const makeApp = () => createApp({ version: '1.2.3', uptimeSeconds: () => 42.9, log: silentLog });
+const makeApp = () =>
+  createApp({
+    version: '1.2.3',
+    uptimeSeconds: () => 42.9,
+    log: silentLog,
+    auth: offlineAuthDeps(),
+  });
 
 describe('GET /api/health', () => {
   it('devuelve estado, versión, hora de Roma y uptime', async () => {

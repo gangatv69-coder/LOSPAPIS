@@ -121,6 +121,10 @@ jobs:
       - name: Avisos push desactivados sin claves VAPID
         run: curl -fsS http://localhost:8080/api/push/config | grep -F '"enabled":false'
 
+      # La API ha conectado con la base como app y ha resuelto la barbería que creó el servicio migrate.
+      - name: Acceso (LP-05) listo para el primer manager
+        run: curl -fsS http://localhost:8080/api/auth/me | grep -F '"bootstrapNeeded":true'
+
       - name: Manifiesto de la PWA
         run: curl -fsSI http://localhost:8080/manifest.webmanifest
 
@@ -137,6 +141,8 @@ jobs:
           PUBLIC_URL: https://example.test
           VAPID_PUBLIC_KEY: x
           VAPID_PRIVATE_KEY: x
+          AUTH_SECRET: x
+          AUTH_ENCRYPTION_KEY: x
         run: docker compose -f compose.yaml -f compose.server.yaml config --quiet
 
       - name: Estado y registros (solo si algo falla)
