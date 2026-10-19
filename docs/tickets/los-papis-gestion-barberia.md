@@ -98,24 +98,26 @@ Cada ticket es una sola cosa que se puede probar por separado y trae su propio c
 
 **Qué entrega:** el sistema publicado en `pruebas.<tu dominio>` con HTTPS, desplegado con un solo comando, y la respuesta a si los avisos push llegan a los móviles (prueba S4).
 
+**Estado: HECHO el 19 de octubre de 2026, salvo la prueba S4 en los móviles del dueño** (commits `4de17c9` → `07f10b6` más el de documentación; plan, spike del servidor y desviaciones en `.claude/plans/lp-03-servidor-de-pruebas.md`). Adaptado a lo decidido el 18 de octubre: el VPS es compartido con las otras webs del dueño (LOS PAPIS va detrás de su nginx) y todavía no hay dominio, así que la app vive en `https://pruebas.37-27-38-218.sslip.io` (nombre temporal que resuelve a la IP; el cambio a `pruebas.<dominio>` es un paso documentado en el README) y las imágenes se construyen en el PC, no en el VPS (no tiene memoria de sobra). Desplegado y comprobado por HTTPS desde el PC: `/api/health`, `/api/push/config` con avisos activados, manifiesto, `sw.js` y redirección de HTTP a HTTPS. `pnpm check` en verde (162 pruebas unitarias e integración, 15 e2e) y GitHub Actions con el job `docker` nuevo.
+
 **Criterios de aceptación**
-- [ ] VPS asegurado:
-    - Ubuntu LTS;
-    - SSH solo con llave;
-    - cortafuegos con 22, 80 y 443;
-    - actualizaciones de seguridad automáticas;
-    - usuario de despliegue sin root;
-    - Docker instalado.
-- [ ] Caddy con HTTPS automático para `pruebas.<dominio>`. `app.<dominio>` queda reservado para producción. La base de datos no está expuesta a internet.
-- [ ] Secretos en un archivo de entorno del servidor (permisos 600), nunca en el repositorio. Un `.env.example` los documenta.
-- [ ] Un solo comando de despliegue construye en el VPS, aplica las migraciones y arranca. Volver atrás es desplegar el commit anterior.
-- [ ] La app se puede instalar como PWA: manifiesto, iconos provisionales con "LOS PAPIS" y service worker.
-- [ ] **Prueba S4:** una página de prueba se suscribe a avisos Web Push (VAPID) y recibe uno en un iPhone (con la app en la pantalla de inicio, iOS 16.4 o posterior) y en un Android. El resultado y la decisión quedan en `docs/spikes/S4.md`.
+- [x] VPS asegurado:
+    - Ubuntu LTS (26.04.1);
+    - SSH solo con llave (desde el 18 de octubre; usuario `lospapis` sin contraseña);
+    - cortafuegos con 22, 80 y 443 (ufw ya los tenía abiertos para el nginx del dueño, más el 8443 de otra app suya; no se tocó);
+    - actualizaciones de seguridad automáticas (`unattended-upgrades` activo);
+    - usuario de despliegue sin root (`lospapis`, en el grupo `docker`);
+    - Docker instalado (Docker CE 29.9 y Compose 5.6 del repositorio oficial). Además, swap de 2 GB porque el servidor comparte 3,8 GB con otras apps.
+- [x] HTTPS para `pruebas.37-27-38-218.sslip.io` con nginx + certbot (webroot, renovación automática) en lugar de Caddy en el puerto 443, porque 80 y 443 son del nginx del dueño; Caddy sigue dentro del contenedor `web`, como en local. `app.<dominio>` y `pruebas.<dominio>` quedan para cuando exista el dominio. La base de datos no publica ningún puerto.
+- [x] Secretos en `/opt/los-papis/.env` (permisos 600, generados en el propio servidor), nunca en el repositorio. `.env.example` documenta cada variable y `compose.server.yaml` exige las obligatorias con `${VAR:?}`.
+- [x] Un solo comando (`pnpm deploy:pruebas`) construye las imágenes en el PC, las sube por ssh, aplica las migraciones (servicio `migrate` de un solo uso, antes de que arranque la API) y arranca. Volver atrás: `pnpm deploy:pruebas -Tag <etiqueta anterior> -SkipBuild`.
+- [x] La app se puede instalar como PWA: manifiesto, iconos provisionales con "LOS PAPIS" (generados con Playwright) y service worker (solo avisos; sin modo sin conexión, como dice la arquitectura).
+- [ ] **Prueba S4:** la tarjeta "Avisos en este dispositivo" de Ajustes se suscribe con VAPID y envía un aviso de prueba con retardo; la API envía con `web-push`. Falta la prueba del dueño en su iPhone y en un Android; el procedimiento, la tabla de resultados y la decisión están en `docs/spikes/S4.md`.
 
 **Contexto:** Arquitectura §4.3 (VPS, Secretos), §4.4 (Entornos) y §6 (S4) · PRD (restricciones: VPS y dominio).
-**Archivos (estimado):** `infra/` (Caddyfile, compose de pruebas, scripts de despliegue y de preparación del servidor), PWA en `apps/web` y `docs/spikes/S4.md`.
-**Tamaño:** ~500–900 líneas.
-**Depende de:** LP-01. **Necesita del dueño:** VPS, dominio con su DNS, y un iPhone y un Android para la prueba.
+**Archivos (reales):** `infra/server/provision-pruebas.sh`, `infra/server/deploy-remote.sh`, `scripts/deploy-pruebas.ps1`, `compose.yaml`, `compose.server.yaml`, `infra/docker/api.Dockerfile`, `infra/caddy/Caddyfile`, `apps/api/src/push/*`, `apps/api/src/{migrate,env,index,app}.ts`, `apps/api/src/cli/vapid-keys.ts`, `apps/web/public/*` (manifiesto, iconos, `sw.js`), `apps/web/src/features/push/*`, `apps/web/src/pwa/register-sw.ts`, `apps/web/scripts/make-icons.ts`, `apps/web/e2e/pwa.spec.ts`, `packages/shared/src/push.ts`, `.github/workflows/check.yml` (job `docker`), `.env.example`, `docs/spikes/S4.md`, `README.md`.
+**Tamaño:** ~500–900 líneas estimadas; reales ~3.600 añadidas (scripts del servidor, API de avisos, pantalla, pruebas y documentación).
+**Depende de:** LP-01. **Necesita del dueño:** VPS (hecho), un iPhone y un Android para la prueba S4 (pendiente) y el dominio con su DNS (después; mientras tanto, nombre temporal).
 
 ### LP-04 — Prueba S3: ¿entiende Haiku 5.5 a los clientes?
 
