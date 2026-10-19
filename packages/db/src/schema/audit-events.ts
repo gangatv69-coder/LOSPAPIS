@@ -1,5 +1,6 @@
 import { index, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 
+import { devices } from './auth.ts';
 import { primaryUuid, timestampTz } from './columns.ts';
 import { shopId } from './shops.ts';
 import { users } from './users.ts';
@@ -23,8 +24,8 @@ export const auditEvents = pgTable(
     before: jsonb().$type<Record<string, unknown>>(),
     after: jsonb().$type<Record<string, unknown>>(),
     reason: text(),
-    // La tabla de dispositivos autorizados llega en LP-05, que añadirá la clave ajena.
-    deviceId: uuid(),
+    // Dispositivo de caja desde el que se hizo (LP-05); NULL desde el móvil o cuando lo hace el sistema.
+    deviceId: uuid().references(() => devices.id, { onDelete: 'restrict' }),
   },
   (t) => [index().on(t.shopId, t.occurredAt)],
 );

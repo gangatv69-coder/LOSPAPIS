@@ -94,4 +94,16 @@ describe('variables de entorno', () => {
     ).toBe('x_test');
     loadRootEnv(); // no lanza aunque .env no exista (.env.example sí existe)
   });
+
+  it('superuserUrl: POSTGRES_USER/POSTGRES_PASSWORD con el host y puerto de DATABASE_URL_OWNER, base postgres', () => {
+    const base = {
+      DATABASE_URL_OWNER: 'postgres://o:x@h:5433/d',
+      DATABASE_URL: 'postgres://a@h/d',
+    };
+    expect(
+      readDbEnv({ ...base, POSTGRES_USER: 'su', POSTGRES_PASSWORD: 'p@ss' }).superuserUrl,
+    ).toBe('postgres://su:p%40ss@h:5433/postgres');
+    // Sin POSTGRES_*: superusuario por defecto de la imagen y sin contraseña (fallará al conectar, no antes).
+    expect(readDbEnv(base).superuserUrl).toBe('postgres://postgres@h:5433/postgres');
+  });
 });

@@ -12,6 +12,7 @@
     "check": "drizzle-kit check",
     "migrate": "node src/cli/migrate.ts",
     "seed": "node src/cli/seed.ts",
+    "reset-test": "node src/cli/reset-test-db.ts",
     "typecheck": "tsc -b",
     "test": "vitest run"
   },

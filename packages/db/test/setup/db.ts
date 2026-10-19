@@ -45,4 +45,8 @@ export const SQLSTATE = {
   appendOnly: 'LP001',
   /** invalid input syntax for type uuid */
   invalidTextRepresentation: '22P02',
+  /** unique_violation: índice único (username por barbería, token_hash de sesiones y dispositivos) */
+  uniqueViolation: '23505',
+  /** foreign_key_violation: la fila apuntada no existe */
+  foreignKeyViolation: '23503',
 } as const;

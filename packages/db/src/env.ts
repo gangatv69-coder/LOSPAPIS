@@ -21,8 +21,22 @@ export type DbEnv = {
   ownerUrl: string;
   /** Conexión del rol app: la aplicación. */
   appUrl: string;
+  /**
+   * Conexión del superusuario de la imagen (POSTGRES_USER/POSTGRES_PASSWORD) a la base `postgres`, con el host
+   * y el puerto de DATABASE_URL_OWNER. Solo sirve para crear bases de pruebas (ensureDatabase).
+   */
+  superuserUrl: string;
   /** Base de datos de pruebas (la crea infra/postgres/init/01-roles.sh; las pruebas la vacían y migran). */
   testDbName: string;
+};
+
+/** postgres://<POSTGRES_USER>:<POSTGRES_PASSWORD>@<host:puerto de ownerUrl>/postgres. new URL() codifica la contraseña. */
+const superuserUrlFrom = (ownerUrl: string, source: NodeJS.ProcessEnv): string => {
+  const url = new URL(ownerUrl);
+  url.username = source.POSTGRES_USER ?? 'postgres';
+  url.password = source.POSTGRES_PASSWORD ?? '';
+  url.pathname = '/postgres';
+  return url.toString();
 };
 
 export const readDbEnv = (source: NodeJS.ProcessEnv = process.env): DbEnv => {
@@ -33,7 +47,12 @@ export const readDbEnv = (source: NodeJS.ProcessEnv = process.env): DbEnv => {
       'Faltan DATABASE_URL_OWNER y/o DATABASE_URL. Llama antes a loadRootEnv() o define las variables (ver .env.example).',
     );
   }
-  return { ownerUrl, appUrl, testDbName: source.POSTGRES_TEST_DB ?? 'los_papis_test' };
+  return {
+    ownerUrl,
+    appUrl,
+    superuserUrl: superuserUrlFrom(ownerUrl, source),
+    testDbName: source.POSTGRES_TEST_DB ?? 'los_papis_test',
+  };
 };
 
 /** La misma conexión apuntando a otra base de datos (por ejemplo, la de pruebas). */

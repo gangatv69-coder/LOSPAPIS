@@ -9,6 +9,19 @@ Esquema (Drizzle ORM 0.45), migraciones SQL, roles y patrones de PostgreSQL 18 d
 
 Los crea `infra/postgres/init/01-roles.sh` la primera vez que arranca el volumen de `db` (`compose.yaml`), junto con la base de pruebas `los_papis_test`. Contraseñas y URLs: `.env.example` en la raíz (copia a `.env` para cambiarlas).
 
+## Tablas
+
+| Tabla | Qué guarda | Patrones |
+|---|---|---|
+| `shops` | Registro de barberías (slug, nombre, zona horaria, moneda) | sin RLS; `app` no inserta ni borra |
+| `users` | Personas de la barbería y, desde LP-05, sus credenciales: `username` (único por barbería), contraseña (scrypt), 2FA (secreto TOTP cifrado, último paso aceptado), PIN de caja, contadores y bloqueos, `last_login_at`, `language` | aislada por barbería; `app` no borra (se desactivan) |
+| `devices` | Dispositivos de caja (iPad, PC) autorizados por un manager: nombre, tipo (`device_kind`), hash del token de la cookie, quién lo autorizó y quién lo revocó | aislada; `app` no borra (se revocan) |
+| `sessions` | Sesiones de usuario: hash del token de la cookie, 2FA pendiente/verificada, caducidad, último uso, dispositivo desde el que se abrió | aislada; `app` sí borra (limpieza de caducadas) |
+| `backup_codes` | Códigos de respaldo de la 2FA (HMAC), usados o revocados | aislada; `app` no borra |
+| `audit_events` | Quién, qué, sobre qué, antes/después, motivo, dispositivo y hora | aislada y "solo crece" |
+
+Los enums `user_role` y `device_kind` tienen los mismos valores que `userRoleSchema` y `deviceKindSchema` de `@los-papis/shared` (una prueba lo comprueba). En la base nunca hay tokens en claro: solo su SHA-256 (sesiones y dispositivos) o su HMAC (códigos de respaldo).
+
 ## Comandos (desde la raíz)
 
 | Comando | Qué hace |
@@ -19,8 +32,13 @@ Los crea `infra/postgres/init/01-roles.sh` la primera vez que arranca el volumen
 | `pnpm db:generate --name=<nombre>` | Genera una migración a partir de los cambios en `src/schema/` |
 | `pnpm db:generate --custom --name=<nombre>` | Crea una migración SQL vacía para escribir a mano (triggers, permisos, `CALL`) |
 | `pnpm db:check` | Comprueba la coherencia de la carpeta `drizzle/` (también lo hace `pnpm check`) |
+| `pnpm db:reset-test -- --name <base>` | Crea la base de pruebas `<base>` si falta (como superusuario), la vacía y la migra como `owner`. Sin `--name`, `POSTGRES_TEST_DB` |
 | `pnpm --filter @los-papis/db test` | Pruebas de integración contra la base de pruebas (la vacían y migran antes) |
 | `pnpm db:down` | Para el contenedor (los datos quedan en el volumen `db_data`) |
+
+## Bases de pruebas
+
+Hay tres, porque vitest corre los proyectos en paralelo y Playwright arranca una API real: `los_papis_test` (este paquete; la crea `01-roles.sh`), `los_papis_test_api` (pruebas de integración de la API) y `los_papis_test_e2e` (Playwright). Las dos últimas las crea `ensureDatabase(superuserUrl, nombre)` de `src/test-db.ts` conectando como el superusuario de la imagen (`POSTGRES_USER`/`POSTGRES_PASSWORD`, de `.env.example` o `.env`; `readDbEnv().superuserUrl` construye la URL con el host y el puerto de `DATABASE_URL_OWNER`), y `resetDatabase(ownerUrl)` las vacía y migra. Desde el terminal: `pnpm db:reset-test -- --name los_papis_test_api`.
 
 ## Patrones (una línea por tabla, en su migración)
 
