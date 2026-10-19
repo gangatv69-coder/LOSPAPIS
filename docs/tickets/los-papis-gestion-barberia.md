@@ -142,18 +142,20 @@ Cada ticket es una sola cosa que se puede probar por separado y trae su propio c
 
 **Qué entrega:** cada persona entra con su cuenta y ve solo lo que le toca. En la caja, cada acción queda firmada con el PIN de un manager.
 
-**Criterios de aceptación**
-- [ ] Better Auth 1.x con usuario y contraseña, sesiones en cookies seguras, protección CSRF y límite de intentos de acceso.
-- [ ] Roles `manager` y `barbero`. El servidor revisa los permisos en cada ruta y, si no hay permiso explícito, niega. El barbero solo accede a lo suyo. Las pruebas cubren toda la tabla de roles del PRD §5.
-- [ ] Los managers tienen 2FA obligatoria con código del móvil (TOTP) y códigos de respaldo. No hay correo en el MVP.
-- [ ] Dispositivos de caja: un manager con 2FA autoriza el iPad o el PC una sola vez. Hay una lista de dispositivos y se pueden revocar.
-- [ ] PIN de manager de 6 dígitos, guardado con hash. Sirve para firmar acciones. Se bloquea tras 5 fallos y lo desbloquea un manager con 2FA. Cada uso y cada fallo queda en la auditoría.
-- [ ] Un manager puede crear cuentas de barbero y de manager, restablecer la contraseña de un barbero y desactivar cuentas. Las cuentas nunca se borran.
-- [ ] Pantallas en español e italiano: acceso, configuración de 2FA, autorización de dispositivo y teclado de PIN, este último igual que en la maqueta.
+**Estado: HECHO el 19 de octubre de 2026** (commits `3584eb9` → `52e9386` más el de cierre; plan y desviaciones en `.claude/plans/lp-05-acceso-y-roles.md`). Una desviación de fondo: **sin Better Auth**, implementación propia con Hono y `node:crypto` (motivo en Arquitectura §4.1: la API va en un solo archivo, cookies `__Host-` solo con https y modo http en el PC, y la 2FA, el PIN y los dispositivos había que hacerlos a medida de todos modos). `pnpm check` en verde (333 pruebas unitarias e integración, 21 e2e con el flujo completo en navegador: `/configurar` → 2FA → entrar → PIN → dispositivo → barbero con contraseña temporal) y desplegado en `https://pruebas.37-27-38-218.sslip.io`, donde el dueño crea su cuenta en `/configurar` (ninguna contraseña ni código pasa por el chat). Queda para LP-08: exigir la aserción del PIN en cada cobro.
 
-**Contexto:** Arquitectura §4.3 (tabla completa), §4.1 (Better Auth) y §4.4 (Correo) · PRD §5 (Qué puede hacer cada rol) y §6 (Reglas fijas) · Maqueta (ventana del PIN en "Caja · Cobro").
-**Archivos (estimado):** `apps/api/src/modules/auth/`, `apps/api/src/middleware/permissions.ts`, `packages/db/src/schema/auth.ts`, `apps/web/src/features/auth/` y `apps/web/src/components/PinPad.tsx`.
-**Tamaño:** ~1200–1500 líneas.
+**Criterios de aceptación**
+- [x] Usuario y contraseña (scrypt), sesiones en cookies `httpOnly` seguras (30 días, 14 sin uso), protección CSRF y límite de intentos (10 fallos bloquean 15 minutos; además 20 intentos por IP y usuario cada 15 minutos). Implementación propia en lugar de Better Auth 1.x.
+- [x] Roles `manager` y `barbero`. El servidor revisa los permisos en cada ruta y, si no hay permiso explícito, niega. El barbero solo accede a lo suyo. Las pruebas cubren toda la tabla de roles del PRD §5 (`apps/api/src/auth/permissions.test.ts`).
+- [x] Los managers tienen 2FA obligatoria con código del móvil (TOTP, RFC 6238, secreto cifrado en la base) y 8 códigos de respaldo de un solo uso. No hay correo en el MVP.
+- [x] Dispositivos de caja: un manager con 2FA reciente autoriza el iPad o el PC una sola vez (cookie de 400 días). Hay una lista de dispositivos y se pueden revocar.
+- [x] PIN de manager de 6 dígitos, guardado con hash (scrypt). Firma acciones con una aserción de 2 minutos. Se bloquea tras 5 fallos y lo desbloquea un manager con 2FA. Cada uso y cada fallo queda en `audit_events`, en la misma transacción.
+- [x] Un manager puede crear cuentas de barbero y de manager (contraseña temporal mostrada una sola vez; cambio obligatorio al entrar), restablecer contraseñas y desactivar y reactivar cuentas. Las cuentas nunca se borran.
+- [x] Pantallas en español e italiano: acceso (`/acceso`), primer manager (`/configurar`), configuración de 2FA con QR y códigos de respaldo, autorización de dispositivo, usuarios y teclado de PIN "¿Quién cobra?" igual que en la maqueta (rejilla de managers con iniciales, 6 puntos y teclado de 3 × 4 con teclas de 60 px).
+
+**Contexto:** Arquitectura §4.3 (tabla completa), §4.1 (acceso: implementación propia) y §4.4 (Correo) · PRD §5 (Qué puede hacer cada rol) y §6 (Reglas fijas) · Maqueta (ventana del PIN en "Caja · Cobro").
+**Archivos (reales):** `packages/shared/src/{auth,totp,base32}.ts`, `packages/db/src/schema/{auth,users}.ts` y migraciones `0003`/`0004`, `packages/db/src/test-db.ts`, `apps/api/src/auth/*` (crypto, tokens, permisos, csrf, límite de intentos, sesiones, cookies, guardias, servicio y rutas), `apps/api/src/{db,env,app,index,migrate}.ts`, `apps/api/test/*`, `apps/web/src/features/auth/*`, `apps/web/src/components/{pin-pad,pin-dialog}.tsx`, `apps/web/src/routes/{acceso,configurar,ajustes,caja,__root}.tsx`, `apps/web/e2e/{auth.setup,auth.spec,totp-codes,auth-files}.ts`, `compose.yaml`, `compose.server.yaml`, `infra/server/deploy-remote.sh`, `.env.example`, `README.md`.
+**Tamaño:** ~1200–1500 líneas estimadas; reales ~9.000 añadidas (contrato, base, API, pantallas, pruebas y documentación).
 **Depende de:** LP-02.
 
 ### LP-06 — Prueba S1: WhatsApp oficial y coexistencia
