@@ -29,9 +29,33 @@ export type AuditAction =
   | 'user.created'
   | 'password.reset'
   | 'user.deactivated'
-  | 'user.reactivated';
+  | 'user.reactivated'
+  // Catálogo y equipo (LP-08). `*.price_changed` lleva before/after con priceCents.
+  | 'service.created'
+  | 'service.updated'
+  | 'service.price_changed'
+  | 'service.deactivated'
+  | 'service.reactivated'
+  | 'product.created'
+  | 'product.updated'
+  | 'product.price_changed'
+  | 'product.deactivated'
+  | 'product.reactivated'
+  | 'barber.created'
+  | 'barber.updated'
+  | 'barber.deactivated'
+  | 'barber.reactivated'
+  | 'photo.uploaded';
 
-export type AuditEntityType = 'user' | 'session' | 'device' | 'backup_code';
+export type AuditEntityType =
+  | 'user'
+  | 'session'
+  | 'device'
+  | 'backup_code'
+  | 'service'
+  | 'product'
+  | 'barber'
+  | 'photo';
 
 export type AuditInput = {
   shopId: string;

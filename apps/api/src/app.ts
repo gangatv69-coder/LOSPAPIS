@@ -10,6 +10,12 @@ import { attachAuth } from './auth/middleware.ts';
 import { createAuthService } from './auth/service.ts';
 import type { AuthDeps, AuthEnv } from './auth/types.ts';
 import { createUserRoutes } from './auth/users.routes.ts';
+import { createBarberRoutes } from './catalog/barbers.routes.ts';
+import { createCatalogRoutes } from './catalog/catalog.routes.ts';
+import { createPhotoRoutes } from './catalog/photos.routes.ts';
+import { createProductRoutes } from './catalog/products.routes.ts';
+import { createCatalogService } from './catalog/service.ts';
+import { createServiceRoutes } from './catalog/services.routes.ts';
 import { createPushRoutes, type PushDeps } from './push/push.routes.ts';
 
 /** Lo mínimo que la app necesita de un logger; evita que `app.ts` dependa de pino o de Node. */
@@ -42,6 +48,7 @@ export const createApp = ({ version, uptimeSeconds, log, push, auth }: AppDeps) 
   });
 
   const authService = createAuthService(auth);
+  const catalogService = createCatalogService(auth);
 
   const app = new Hono<AuthEnv>()
     // Log estructurado por petición (sustituye a hono/logger, que solo imprime texto).
@@ -78,7 +85,13 @@ export const createApp = ({ version, uptimeSeconds, log, push, auth }: AppDeps) 
     // Acceso (LP-05): identidad y 2FA, dispositivos de caja y cuentas.
     .route('/api/auth', createAuthRoutes(auth, authService))
     .route('/api/devices', createDeviceRoutes(auth, authService))
-    .route('/api/users', createUserRoutes(authService));
+    .route('/api/users', createUserRoutes(authService))
+    // Catálogo y equipo (LP-08): lectura para la caja y gestión para los managers.
+    .route('/api/catalog', createCatalogRoutes(catalogService))
+    .route('/api/services', createServiceRoutes(catalogService))
+    .route('/api/products', createProductRoutes(catalogService))
+    .route('/api/barbers', createBarberRoutes(catalogService))
+    .route('/api/photos', createPhotoRoutes(catalogService));
 
   return app;
 };

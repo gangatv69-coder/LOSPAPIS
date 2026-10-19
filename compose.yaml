@@ -55,6 +55,8 @@ services:
         required: false
     environment:
       DB_HOST: db
+      # Ejemplos del catálogo (LP-08) si faltan; SEED_CATALOG=none en .env los deja fuera.
+      SEED_CATALOG: ${SEED_CATALOG:-example}
     depends_on:
       db:
         condition: service_healthy

@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 
-import { runMigrations, seedShop } from '@los-papis/db';
+import { runMigrations, seedCatalog, seedShop } from '@los-papis/db';
 import * as z from 'zod';
 
 import { optionalVar } from './env.ts';
@@ -8,7 +8,8 @@ import { optionalVar } from './env.ts';
 /**
  * Entrada del bundle dist/migrate.mjs: el servicio `migrate` de compose lo ejecuta (`node migrate.mjs`) con la
  * MISMA imagen que la API y antes de arrancarla. Conecta como owner, aplica las migraciones de ./drizzle
- * (packages/db/drizzle, copiada junto al bundle al construir la imagen) y deja creada la barbería.
+ * (packages/db/drizzle, copiada junto al bundle al construir la imagen), deja creada la barbería y, si
+ * SEED_CATALOG=example, carga los ejemplos del catálogo (LP-08) que falten.
  * NO usa DATABASE_URL_OWNER de .env.example: apunta al 127.0.0.1 del PC, no al servicio `db`.
  */
 
@@ -22,6 +23,8 @@ const migrateEnvSchema = z.object({
   POSTGRES_DB: optionalVar(z.string().min(1)),
   /** Solo para probar el bundle en el PC; por defecto, ./drizzle junto al bundle. */
   MIGRATIONS_FOLDER: optionalVar(z.string().min(1)),
+  /** `example` carga los ejemplos de la maqueta (servicios, productos y barberos) si faltan; vacío = `none`. */
+  SEED_CATALOG: optionalVar(z.enum(['example', 'none'])),
 });
 
 type MigrateEnv = z.infer<typeof migrateEnvSchema>;
@@ -64,6 +67,16 @@ const main = async (): Promise<void> => {
   // servidor nadie ejecuta pnpm db:seed, así que la deja lista el mismo servicio que migra. Idempotente.
   const shop = await seedShop(url.toString());
   console.log(`Barbería "${shop.slug}" lista`);
+  // Ejemplos de la maqueta (LP-08) para el PC y el servidor de pruebas; en producción SEED_CATALOG=none. Solo
+  // inserta lo que falta: los precios que un manager haya cambiado no se tocan.
+  if (env.SEED_CATALOG === 'example') {
+    const { inserted } = await seedCatalog(url.toString());
+    console.log(
+      `Catálogo de ejemplo cargado: ${inserted.services} servicios, ${inserted.products} productos y ${inserted.barbers} barberos nuevos`,
+    );
+  } else {
+    console.log('Catálogo: sin datos de ejemplo (SEED_CATALOG=none)');
+  }
 };
 
 /** Drizzle envuelve el error de pg ("Failed query: …") y deja la causa real (contraseña, conexión) en `cause`. */

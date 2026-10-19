@@ -1,6 +1,7 @@
 /**
- * Códigos de error estables de la API de acceso (plan LP-05, "Errores de la API"). La pantalla decide el texto
- * por el código, nunca por el mensaje. Los `validation` 400 los produce el validador de cuerpos (validate.ts).
+ * Códigos de error estables de la API (plan LP-05, "Errores de la API"; LP-08 añade los del catálogo). La
+ * pantalla decide el texto por el código, nunca por el mensaje. Los `validation` 400 los produce el validador
+ * de cuerpos (validate.ts).
  */
 export type AuthErrorCode =
   | 'unauthenticated'
@@ -21,9 +22,14 @@ export type AuthErrorCode =
   | 'username_taken'
   | 'cannot_deactivate_self'
   | 'not_found'
-  | 'rate_limited';
+  | 'rate_limited'
+  // Catálogo y equipo (LP-08)
+  | 'photo_invalid'
+  | 'photo_too_large'
+  | 'short_code_taken'
+  | 'user_already_barber';
 
-export type AuthErrorStatus = 400 | 401 | 403 | 404 | 409 | 423 | 429;
+export type AuthErrorStatus = 400 | 401 | 403 | 404 | 409 | 413 | 423 | 429;
 
 /** Error de negocio del acceso: `app.ts` lo convierte en `{ error, ...detalle }` con su estado HTTP. */
 export class AuthError extends Error {

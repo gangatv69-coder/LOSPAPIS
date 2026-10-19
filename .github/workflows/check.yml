@@ -125,11 +125,19 @@ jobs:
       - name: Acceso (LP-05) listo para el primer manager
         run: curl -fsS http://localhost:8080/api/auth/me | grep -F '"bootstrapNeeded":true'
 
+      # La ruta existe y exige sesión o dispositivo: sin cookie responde 401 (sin -f: el 401 es lo esperado).
+      - name: Catálogo (LP-08) protegido
+        run: test "$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:8080/api/catalog)" = 401
+
       - name: Manifiesto de la PWA
         run: curl -fsSI http://localhost:8080/manifest.webmanifest
 
       - name: Migraciones aplicadas por el servicio migrate
         run: docker compose logs migrate | grep -F 'Migraciones al día'
+
+      # Sin .env, SEED_CATALOG vale `example`: migrate carga los ejemplos de la maqueta.
+      - name: Catálogo de ejemplo cargado por el servicio migrate
+        run: docker compose logs migrate | grep -F 'Catálogo de ejemplo cargado'
 
       # La capa del servidor con valores ficticios: sintaxis, !reset/!override y las ${VAR:?} obligatorias.
       - name: Capa del servidor (compose.server.yaml)

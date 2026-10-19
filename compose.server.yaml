@@ -25,6 +25,8 @@ services:
       DB_HOST: db
       POSTGRES_DB: los_papis
       DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:?Falta DB_OWNER_PASSWORD en .env}
+      # Servidor de pruebas: los ejemplos de la maqueta (LP-08). En producción, SEED_CATALOG=none en .env.
+      SEED_CATALOG: ${SEED_CATALOG:-example}
     deploy:
       resources:
         limits:
