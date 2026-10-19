@@ -22,3 +22,11 @@ export const idParam = () =>
       return c.json({ error: 'validation' as const, issues: result.error.issues }, 400);
     }
   });
+
+/** Parámetros de la query (?day=2026-10-19): cada valor llega como texto; los repetidos, como lista. */
+export const queryParams = <T extends z.ZodType>(schema: T) =>
+  zValidator('query', schema, (result, c) => {
+    if (!result.success) {
+      return c.json({ error: 'validation' as const, issues: result.error.issues }, 400);
+    }
+  });

@@ -45,7 +45,10 @@ export type AuditAction =
   | 'barber.updated'
   | 'barber.deactivated'
   | 'barber.reactivated'
-  | 'photo.uploaded';
+  | 'photo.uploaded'
+  // Cobro en la caja (LP-09). El actor de `sale.created` es el manager que firmó con su PIN.
+  | 'sale.created'
+  | 'sale.receipt_recorded';
 
 export type AuditEntityType =
   | 'user'
@@ -55,7 +58,8 @@ export type AuditEntityType =
   | 'service'
   | 'product'
   | 'barber'
-  | 'photo';
+  | 'photo'
+  | 'sale';
 
 export type AuditInput = {
   shopId: string;

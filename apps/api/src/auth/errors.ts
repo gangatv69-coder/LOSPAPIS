@@ -1,7 +1,7 @@
 /**
- * Códigos de error estables de la API (plan LP-05, "Errores de la API"; LP-08 añade los del catálogo). La
- * pantalla decide el texto por el código, nunca por el mensaje. Los `validation` 400 los produce el validador
- * de cuerpos (validate.ts).
+ * Códigos de error estables de la API (plan LP-05, "Errores de la API"; LP-08 añade los del catálogo y LP-09
+ * los del cobro). La pantalla decide el texto por el código, nunca por el mensaje. Los `validation` 400 los
+ * produce el validador de cuerpos y parámetros (validate.ts).
  */
 export type AuthErrorCode =
   | 'unauthenticated'
@@ -27,7 +27,15 @@ export type AuthErrorCode =
   | 'photo_invalid'
   | 'photo_too_large'
   | 'short_code_taken'
-  | 'user_already_barber';
+  | 'user_already_barber'
+  // Cobro en la caja (LP-09)
+  | 'pin_assertion_invalid'
+  | 'total_mismatch'
+  | 'tender_too_low'
+  | 'sale_conflict'
+  | 'receipt_recorded'
+  | 'catalog_item_unavailable'
+  | 'barber_unavailable';
 
 export type AuthErrorStatus = 400 | 401 | 403 | 404 | 409 | 413 | 423 | 429;
 

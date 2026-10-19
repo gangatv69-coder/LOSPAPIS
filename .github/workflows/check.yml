@@ -129,6 +129,10 @@ jobs:
       - name: Catálogo (LP-08) protegido
         run: test "$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:8080/api/catalog)" = 401
 
+      # La lista de cobros del día exige la sesión de un manager: sin cookie responde 401.
+      - name: Cobros (LP-09) protegidos
+        run: test "$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:8080/api/sales/day)" = 401
+
       - name: Manifiesto de la PWA
         run: curl -fsSI http://localhost:8080/manifest.webmanifest
 

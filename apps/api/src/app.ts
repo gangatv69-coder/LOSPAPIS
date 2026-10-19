@@ -17,6 +17,8 @@ import { createProductRoutes } from './catalog/products.routes.ts';
 import { createCatalogService } from './catalog/service.ts';
 import { createServiceRoutes } from './catalog/services.routes.ts';
 import { createPushRoutes, type PushDeps } from './push/push.routes.ts';
+import { createSaleRoutes } from './sales/sales.routes.ts';
+import { createSaleService } from './sales/service.ts';
 
 /** Lo mínimo que la app necesita de un logger; evita que `app.ts` dependa de pino o de Node. */
 export type AppLogger = {
@@ -49,6 +51,7 @@ export const createApp = ({ version, uptimeSeconds, log, push, auth }: AppDeps) 
 
   const authService = createAuthService(auth);
   const catalogService = createCatalogService(auth);
+  const saleService = createSaleService(auth);
 
   const app = new Hono<AuthEnv>()
     // Log estructurado por petición (sustituye a hono/logger, que solo imprime texto).
@@ -91,7 +94,9 @@ export const createApp = ({ version, uptimeSeconds, log, push, auth }: AppDeps) 
     .route('/api/services', createServiceRoutes(catalogService))
     .route('/api/products', createProductRoutes(catalogService))
     .route('/api/barbers', createBarberRoutes(catalogService))
-    .route('/api/photos', createPhotoRoutes(catalogService));
+    .route('/api/photos', createPhotoRoutes(catalogService))
+    // Cobro en la caja (LP-09): el libro de cobros, el día y el recibo del registratore.
+    .route('/api/sales', createSaleRoutes(saleService));
 
   return app;
 };
