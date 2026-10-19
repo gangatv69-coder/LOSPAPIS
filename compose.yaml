@@ -1,8 +1,11 @@
 # Compose de LOS PAPIS (nombre canónico: compose.yaml; "version:" ya no se usa).
-# Todo:                 docker compose up --build   ->  http://localhost:8080
+# Todo:                 docker compose up --build   ->  http://localhost:8080 (construye las imágenes :local)
 # Solo la base de datos: docker compose up -d --wait db   (= pnpm db:up)
+# Servidor de pruebas:   docker compose -f compose.yaml -f compose.server.yaml up -d --wait, con las imágenes
+#                        ya cargadas desde el PC (IMAGE_TAG en .env) y sin construir nada: ver compose.server.yaml.
 # Los servicios hablan por la red interna que Compose crea para el proyecto (los-papis_default):
 # "web" publica 8080 al PC y "db" publica 5432 solo en 127.0.0.1 (para pnpm dev, migraciones y pruebas).
+# Orden de arranque: db (healthy) -> migrate (termina con 0) -> api (healthy) -> web.
 name: los-papis
 
 services:
@@ -39,20 +42,47 @@ services:
       start_period: 60s
       start_interval: 1s
 
+  # De un solo uso: aplica las migraciones de packages/db/drizzle como owner y termina (Exited 0); cada
+  # `docker compose up` lo vuelve a ejecutar (es idempotente). Misma imagen que la API, sin build: compose
+  # construye `api` antes de crear los contenedores. Lee DB_OWNER_PASSWORD y POSTGRES_DB del env_file.
+  migrate:
+    image: los-papis-api:${IMAGE_TAG:-local}
+    command: ["node", "migrate.mjs"]
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
+    environment:
+      DB_HOST: db
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    init: true
+
   api:
+    image: los-papis-api:${IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: infra/docker/api.Dockerfile
       args:
         APP_VERSION: 0.1.0
+    # .env.example deja VAPID_* vacías (avisos push desactivados); .env, si existe, aporta las claves del PC.
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
     environment:
       NODE_ENV: production
       PORT: "3000"
       LOG_LEVEL: info
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
     depends_on:
-      # La API todavía no abre conexiones (llegan con LP-05), pero ya arranca después de la base de datos.
-      db:
-        condition: service_healthy
+      # Arranca cuando las migraciones han terminado bien (y migrate ya esperó a que db estuviera healthy).
+      migrate:
+        condition: service_completed_successfully
     # Node no está pensado para ser PID 1: un init reenvía señales y recoge zombis
     init: true
     restart: unless-stopped
@@ -69,6 +99,7 @@ services:
       start_period: 5s
 
   web:
+    image: los-papis-web:${IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: infra/docker/web.Dockerfile

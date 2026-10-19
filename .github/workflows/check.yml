@@ -95,3 +95,52 @@ jobs:
       - name: Registros de la base de datos (solo si algo falla)
         if: failure()
         run: docker compose logs db
+
+  # Las dos imágenes de Docker y el arranque completo (db -> migrate -> api -> web), igual que en el PC y en el
+  # servidor de pruebas. En paralelo con `check`: no comparten nada.
+  docker:
+    name: docker compose
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - name: Código
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # Sin .env: compose usa .env.example (avisos push desactivados). --wait espera a los healthchecks de
+      # db/api/web y a que migrate termine con 0.
+      - name: Construir y arrancar todo
+        run: docker compose up -d --build --wait --wait-timeout 300
+
+      - name: La API responde a través de Caddy
+        run: curl -fsS http://localhost:8080/api/health
+
+      - name: Avisos push desactivados sin claves VAPID
+        run: curl -fsS http://localhost:8080/api/push/config | grep -F '"enabled":false'
+
+      - name: Manifiesto de la PWA
+        run: curl -fsSI http://localhost:8080/manifest.webmanifest
+
+      - name: Migraciones aplicadas por el servicio migrate
+        run: docker compose logs migrate | grep -F 'Migraciones al día'
+
+      # La capa del servidor con valores ficticios: sintaxis, !reset/!override y las ${VAR:?} obligatorias.
+      - name: Capa del servidor (compose.server.yaml)
+        env:
+          IMAGE_TAG: ci
+          POSTGRES_PASSWORD: x
+          DB_OWNER_PASSWORD: x
+          DB_APP_PASSWORD: x
+          PUBLIC_URL: https://example.test
+          VAPID_PUBLIC_KEY: x
+          VAPID_PRIVATE_KEY: x
+        run: docker compose -f compose.yaml -f compose.server.yaml config --quiet
+
+      - name: Estado y registros (solo si algo falla)
+        if: failure()
+        run: |
+          docker compose ps -a
+          docker compose logs

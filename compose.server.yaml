@@ -1,0 +1,55 @@
+# Capa del servidor de pruebas (VPS compartido, detrás del nginx del dueño). SIEMPRE junto a compose.yaml:
+#   docker compose -f compose.yaml -f compose.server.yaml up -d --wait
+# Interpolación: /opt/los-papis/.env (permisos 600). ${VAR:?} = obligatoria: compose se niega a arrancar si falta.
+# Las imágenes llegan ya construidas desde el PC (scripts/deploy-pruebas.ps1): aquí no se construye nada.
+# Límites de memoria: el VPS tiene ~1,2 GB libres y los comparte con otras apps (db 512M + api 256M + web 128M).
+services:
+  db:
+    ports: !reset []            # nunca expuesta: ni al servidor ni a internet
+    env_file: !reset []
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD en .env}
+      POSTGRES_DB: los_papis
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:?Falta DB_OWNER_PASSWORD en .env}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?Falta DB_APP_PASSWORD en .env}
+    command: ["postgres", "-c", "timezone=UTC", "-c", "log_timezone=UTC", "-c", "shared_buffers=96MB", "-c", "max_connections=40"]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+  migrate:
+    image: los-papis-api:${IMAGE_TAG:?Falta IMAGE_TAG en .env}
+    env_file: !reset []
+    environment:
+      DB_HOST: db
+      POSTGRES_DB: los_papis
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:?Falta DB_OWNER_PASSWORD en .env}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+  api:
+    build: !reset null
+    image: los-papis-api:${IMAGE_TAG:?Falta IMAGE_TAG en .env}
+    env_file: !reset []
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PUBLIC_URL: ${PUBLIC_URL:?Falta PUBLIC_URL en .env}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:?Faltan las claves VAPID en .env (las genera deploy-remote.sh)}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:?Faltan las claves VAPID en .env (las genera deploy-remote.sh)}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+  web:
+    build: !reset null
+    image: los-papis-web:${IMAGE_TAG:?Falta IMAGE_TAG en .env}
+    ports: !override
+      - "127.0.0.1:${WEB_PORT:-8090}:8080"   # solo nginx del servidor llega aquí
+    deploy:
+      resources:
+        limits:
+          memory: 128M
