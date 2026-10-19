@@ -19,6 +19,7 @@
       "!!**/.vitest",
       "!!**/.tanstack",
       "!!**/routeTree.gen.ts",
+      "!!packages/db/drizzle/meta",
       "!!**/*.css",
       "!!pnpm-lock.yaml"
     ],

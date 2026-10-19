@@ -17,7 +17,13 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "e2e": "pnpm --filter @los-papis/web run e2e",
-    "check": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run e2e"
+    "db:up": "docker compose up -d --wait --wait-timeout 120 db",
+    "db:down": "docker compose stop db",
+    "db:generate": "pnpm --filter @los-papis/db run generate",
+    "db:check": "pnpm --filter @los-papis/db run check",
+    "db:migrate": "pnpm --filter @los-papis/db run migrate",
+    "db:seed": "pnpm --filter @los-papis/db run seed",
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run db:check && pnpm run test && pnpm run e2e"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",

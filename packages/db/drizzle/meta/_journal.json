@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792373887933,
+      "tag": "0000_patterns",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792373888437,
+      "tag": "0001_base-tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792373888922,
+      "tag": "0002_apply-patterns",
+      "breakpoints": true
+    }
+  ]
+}
