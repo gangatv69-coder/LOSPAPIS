@@ -8,7 +8,8 @@
     "team": "Squadra",
     "dashboard": "Pannello",
     "audit": "Registro",
-    "settings": "Impostazioni"
+    "settings": "Impostazioni",
+    "lockedHint": "Bloccata finché non completi la configurazione del tuo account in Impostazioni."
   },
   "language": {
     "label": "Lingua",
@@ -127,6 +128,13 @@
     },
     "account": {
       "title": "Account"
+    },
+    "setup": {
+      "locked": {
+        "contrasena": "Prima cambia la password temporanea: è qui, in Impostazioni → Account.",
+        "2fa": "Prima attiva la verifica in due passaggi: è qui, in Impostazioni → Account."
+      },
+      "lockedNote": "Finché non hai finito, le altre schede hanno il lucchetto. I passaggi sono qui sotto, in «Account»."
     },
     "password": {
       "title": "Password",

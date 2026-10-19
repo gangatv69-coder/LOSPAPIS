@@ -9,9 +9,9 @@ import {
 } from '@tanstack/react-router';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AppHeader } from '@/components/app-header';
+import { AppHeader, type AppHeaderProps } from '@/components/app-header';
 import { ThemeProvider } from '@/components/theme-provider';
 import i18n from '@/i18n';
 
@@ -34,10 +34,14 @@ const manager: AuthState = {
 const Empty = () => null;
 
 /** Router mínimo con las mismas rutas que la app (las pestañas enlazan a ellas), sin devtools ni loaders. */
-function createTestRouter(initialPath: string, auth: AuthState | null) {
+function createTestRouter(
+  initialPath: string,
+  auth: AuthState | null,
+  onLockedTab?: AppHeaderProps['onLockedTab'],
+) {
   const Layout = () => (
     <ThemeProvider>
-      <AppHeader auth={auth} />
+      <AppHeader auth={auth} onLockedTab={onLockedTab} />
       <Outlet />
     </ThemeProvider>
   );
@@ -58,8 +62,12 @@ function createTestRouter(initialPath: string, auth: AuthState | null) {
   });
 }
 
-async function renderHeader(initialPath: string, auth: AuthState | null = null) {
-  render(<RouterProvider router={createTestRouter(initialPath, auth)} />);
+async function renderHeader(
+  initialPath: string,
+  auth: AuthState | null = null,
+  onLockedTab?: AppHeaderProps['onLockedTab'],
+) {
+  render(<RouterProvider router={createTestRouter(initialPath, auth, onLockedTab)} />);
   // La primera navegación del router es asíncrona: se espera a que la cabecera esté montada.
   return within(await screen.findByRole('banner'));
 }
@@ -111,6 +119,51 @@ describe('AppHeader', () => {
         .getAllByRole('link')
         .map((link) => link.textContent),
     ).toEqual(['Caja', 'Cierre', 'Panel', 'Ajustes']);
+  });
+
+  it('con la contraseña temporal solo Ajustes es un enlace: el resto lleva candado y al tocarlo dice qué falta', async () => {
+    const user = userEvent.setup();
+    const onLockedTab = vi.fn();
+    const pending: AuthState = {
+      ...manager,
+      user: manager.user ? { ...manager.user, mustChangePassword: true, totpEnabled: false } : null,
+    };
+    const header = await renderHeader('/ajustes', pending, onLockedTab);
+    const nav = header.getByRole('navigation', { name: 'Navegación principal' });
+
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Ajustes']);
+    const locked = within(nav).getAllByTestId('nav-tab-locked');
+    expect(locked.map((tab) => tab.textContent)).toEqual([
+      'Caja',
+      'Cierre',
+      'Catálogo',
+      'Equipo',
+      'Panel',
+      'Auditoría',
+    ]);
+    const caja = within(nav).getByRole('button', { name: 'Caja' });
+    expect(caja).toHaveAccessibleDescription(
+      'Bloqueada hasta que termines de configurar tu cuenta en Ajustes.',
+    );
+
+    await user.click(caja);
+    expect(onLockedTab).toHaveBeenCalledWith('contrasena');
+  });
+
+  it('con la contraseña ya cambiada pero sin 2FA, el candado pide la 2FA', async () => {
+    const user = userEvent.setup();
+    const onLockedTab = vi.fn();
+    const header = await renderHeader(
+      '/ajustes',
+      { ...manager, user: manager.user ? { ...manager.user, totpEnabled: false } : null },
+      onLockedTab,
+    );
+    await user.click(header.getByRole('button', { name: 'Cierre' }));
+    expect(onLockedTab).toHaveBeenCalledWith('2fa');
   });
 
   it('en italiano la pestaña de la auditoría es «Registro»', async () => {

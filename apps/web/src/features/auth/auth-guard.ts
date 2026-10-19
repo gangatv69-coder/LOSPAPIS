@@ -52,6 +52,22 @@ export function isManagerSession(state: AuthState): boolean {
   return isAuthenticated(state) && state.user?.role === 'manager';
 }
 
+/** Lo obligatorio que puede faltarle a una cuenta antes de usar la app. */
+export type SetupStep = Extract<SettingsStep, 'contrasena' | '2fa'>;
+
+/**
+ * El primer paso obligatorio pendiente de la sesión, en orden: cambiar la contraseña temporal y, si es un
+ * manager, activar la 2FA; null si no falta nada. Mientras falte, el guardia solo deja entrar en Ajustes
+ * y la cabecera enseña las demás pestañas con candado.
+ */
+export function pendingSetupStep(state: AuthState): SetupStep | null {
+  const user = isAuthenticated(state) ? state.user : null;
+  if (!user) return null;
+  if (user.mustChangePassword) return 'contrasena';
+  if (user.role === 'manager' && !user.totpEnabled) return '2fa';
+  return null;
+}
+
 /** `next` solo cuando merece la pena volver: nunca para la raíz ni para las rutas públicas. */
 function nextFor(path: string, href: string | undefined): string | undefined {
   if (!href || path === '/' || PUBLIC_PATHS.has(path)) return undefined;
@@ -83,8 +99,8 @@ export function guardRoute(state: AuthState, pathname: string, href?: string): G
   if (!user) return { kind: 'login', next: nextFor(path, href) };
   if (path === '/acceso') return { kind: 'home' };
   if (path === '/ajustes') return ALLOW;
-  if (user.mustChangePassword) return { kind: 'settings', paso: 'contrasena' };
-  if (user.role === 'manager' && !user.totpEnabled) return { kind: 'settings', paso: '2fa' };
+  const step = pendingSetupStep(state);
+  if (step) return { kind: 'settings', paso: step };
   // Un barbero no cobra ni cierra. Con la cookie de dispositivo la caja sí funciona: el PIN del manager es la barrera.
   if (user.role === 'barber' && !state.device && DEVICE_PATHS.has(path)) return { kind: 'home' };
   return ALLOW;

@@ -1,6 +1,7 @@
 import type { AuthState } from '@los-papis/shared';
 import { Link } from '@tanstack/react-router';
 import { Lock, LogOut } from 'lucide-react';
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { TricolorStripe } from '@/components/brand/tricolor-stripe';
@@ -8,7 +9,12 @@ import { Wordmark } from '@/components/brand/wordmark';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
-import { isBarberSession, isManagerSession } from '@/features/auth/auth-guard';
+import {
+  isBarberSession,
+  isManagerSession,
+  pendingSetupStep,
+  type SetupStep,
+} from '@/features/auth/auth-guard';
 
 /** Pestañas de la cabecera (modo caja: dispositivo sin usuario). `to` está tipado por el registro del router. */
 const baseTabs = [
@@ -43,6 +49,8 @@ function tabsFor(auth: AuthState | null) {
 
 const focusRing = 'outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50';
 
+const tabClass = `inline-flex h-12 shrink-0 items-center rounded-lg px-4 font-medium text-muted-foreground transition-colors ${focusRing}`;
+
 export type AppHeaderProps = {
   /** Estado de acceso (GET /api/auth/me): usuario con "Salir" o nombre del dispositivo de caja. */
   auth?: AuthState | null;
@@ -50,22 +58,29 @@ export type AppHeaderProps = {
   showTabs?: boolean;
   onLogout?: () => void;
   loggingOut?: boolean;
+  /** Toque en una pestaña con candado (falta un paso obligatorio de la cuenta): se explica cuál. */
+  onLockedTab?: (step: SetupStep) => void;
 };
 
 /**
  * Cabecera de la maqueta: marca, pestañas en píldora (activa = clara en oscuro, amarilla en claro),
  * quién está dentro (o qué dispositivo es), selector de idioma, botón de tema y, debajo, la franja tricolor.
+ * Mientras a la cuenta le falte un paso obligatorio (contraseña temporal, 2FA del manager) el guardia solo
+ * deja entrar en Ajustes: las demás pestañas salen con candado y, al tocarlas, `onLockedTab` dice qué falta.
  */
 export function AppHeader({
   auth = null,
   showTabs = true,
   onLogout,
   loggingOut = false,
+  onLockedTab,
 }: AppHeaderProps) {
   const { t } = useTranslation();
+  const lockedHintId = useId();
   const user = auth?.user ?? null;
   const device = auth?.device ?? null;
   const tabs = tabsFor(auth);
+  const setupStep = auth ? pendingSetupStep(auth) : null;
 
   return (
     // Relleno superior = zona segura: en la app instalada en iOS (barra de estado translúcida) el
@@ -86,15 +101,35 @@ export function AppHeader({
             aria-label={t('nav.label')}
             className="flex items-center gap-1 overflow-x-auto rounded-xl bg-card p-1"
           >
-            {tabs.map((tab) => (
-              <Link
-                key={tab.to}
-                to={tab.to}
-                className={`inline-flex h-12 shrink-0 items-center rounded-lg px-4 font-medium text-muted-foreground transition-colors hover:text-foreground data-[status=active]:bg-primary data-[status=active]:text-primary-foreground dark:data-[status=active]:bg-foreground dark:data-[status=active]:text-background ${focusRing}`}
-              >
-                {t(tab.key)}
-              </Link>
-            ))}
+            {tabs.map((tab) =>
+              setupStep && tab.to !== '/ajustes' ? (
+                // No es un botón desactivado: al tocarlo explica qué falta y baja hasta ese paso.
+                <button
+                  key={tab.to}
+                  type="button"
+                  aria-describedby={lockedHintId}
+                  data-testid="nav-tab-locked"
+                  onClick={() => onLockedTab?.(setupStep)}
+                  className={`${tabClass} gap-1.5 opacity-60`}
+                >
+                  <Lock className="size-4" aria-hidden="true" />
+                  {t(tab.key)}
+                </button>
+              ) : (
+                <Link
+                  key={tab.to}
+                  to={tab.to}
+                  className={`${tabClass} hover:text-foreground data-[status=active]:bg-primary data-[status=active]:text-primary-foreground dark:data-[status=active]:bg-foreground dark:data-[status=active]:text-background`}
+                >
+                  {t(tab.key)}
+                </Link>
+              ),
+            )}
+            {setupStep ? (
+              <span id={lockedHintId} className="sr-only">
+                {t('nav.lockedHint')}
+              </span>
+            ) : null}
           </nav>
         ) : null}
         <div className="ml-auto flex items-center gap-3">

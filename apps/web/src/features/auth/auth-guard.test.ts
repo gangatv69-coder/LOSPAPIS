@@ -1,7 +1,13 @@
 import type { AuthState, SessionUser } from '@los-papis/shared';
 import { describe, expect, it } from 'vitest';
 
-import { guardRoute, isSettingsStep, normalizePath, safeNext } from '@/features/auth/auth-guard';
+import {
+  guardRoute,
+  isSettingsStep,
+  normalizePath,
+  pendingSetupStep,
+  safeNext,
+} from '@/features/auth/auth-guard';
 
 const manager: SessionUser = {
   id: '0f6a8d3e-3d0c-4a0b-9c3e-1b2c3d4e5f60',
@@ -105,6 +111,31 @@ describe('guardRoute', () => {
     expect(guardRoute(onDevice, '/cierre')).toEqual({ kind: 'allow' });
     // Un manager entra siempre.
     expect(guardRoute(state({ user: manager }), '/caja')).toEqual({ kind: 'allow' });
+  });
+});
+
+describe('pendingSetupStep', () => {
+  it('primero la contraseña temporal, después la 2FA del manager; un barbero no necesita 2FA', () => {
+    const barber: SessionUser = { ...manager, role: 'barber', totpEnabled: false, pinSet: false };
+    expect(
+      pendingSetupStep(
+        state({ user: { ...manager, mustChangePassword: true, totpEnabled: false } }),
+      ),
+    ).toBe('contrasena');
+    expect(pendingSetupStep(state({ user: { ...manager, totpEnabled: false } }))).toBe('2fa');
+    expect(pendingSetupStep(state({ user: { ...barber, mustChangePassword: true } }))).toBe(
+      'contrasena',
+    );
+    expect(pendingSetupStep(state({ user: barber }))).toBeNull();
+    expect(pendingSetupStep(state({ user: manager }))).toBeNull();
+  });
+
+  it('sin sesión completa (2FA del login pendiente, solo el dispositivo) no hay nada que desbloquear', () => {
+    expect(
+      pendingSetupStep(state({ user: { ...manager, totpEnabled: false }, pendingTotp: true })),
+    ).toBeNull();
+    expect(pendingSetupStep(state({ device }))).toBeNull();
+    expect(pendingSetupStep(state({}))).toBeNull();
   });
 });
 

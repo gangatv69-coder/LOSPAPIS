@@ -4,11 +4,12 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { isSettingsStep, type SettingsStep } from '@/features/auth/auth-guard';
+import { isSettingsStep, pendingSetupStep, type SettingsStep } from '@/features/auth/auth-guard';
 import { DeviceCard } from '@/features/auth/device-card';
 import { DevicesList } from '@/features/auth/devices-list';
 import { PasswordCard } from '@/features/auth/password-card';
 import { PinCard } from '@/features/auth/pin-card';
+import { scrollToSettingsStep } from '@/features/auth/settings-scroll';
 import { TotpSetupCard } from '@/features/auth/totp-setup-card';
 import { useAuth } from '@/features/auth/use-auth';
 import { UsersAdmin } from '@/features/auth/users-admin';
@@ -29,18 +30,33 @@ const sectionClass = 'scroll-mt-28 space-y-6';
 
 /**
  * Ajustes, en este orden: avisos (LP-03), cuenta (contraseña y 2FA), PIN de caja, dispositivos y,
- * para los managers, usuarios. El guardia manda aquí con ?paso= cuando falta algo obligatorio.
+ * para los managers, usuarios. El guardia manda aquí con ?paso= cuando falta algo obligatorio; mientras
+ * falte, la cuenta va la primera (es lo único que quita el candado de las demás pestañas).
  */
 function AjustesPage() {
   const { t } = useTranslation();
   const { paso } = Route.useSearch();
-  const { user, isManager } = useAuth();
+  const { state, user, isManager } = useAuth();
   const needsTotp = isManager && user !== null && !user.totpEnabled;
+  const setupPending = state ? pendingSetupStep(state) !== null : false;
 
   useEffect(() => {
-    if (!paso) return;
-    document.getElementById(`ajustes-${paso}`)?.scrollIntoView({ block: 'start' });
+    if (paso) scrollToSettingsStep(paso);
   }, [paso]);
+
+  const account = (
+    <div id="ajustes-contrasena" className={sectionClass}>
+      <h2 className="font-display text-3xl font-semibold tracking-wide">
+        {t('auth.account.title')}
+      </h2>
+      <PasswordCard />
+      {isManager ? (
+        <div id="ajustes-2fa" className="scroll-mt-28">
+          <TotpSetupCard />
+        </div>
+      ) : null}
+    </div>
+  );
 
   return (
     <section className="space-y-8">
@@ -57,18 +73,14 @@ function AjustesPage() {
           <AlertDescription>{t('auth.totpSetup.required')}</AlertDescription>
         </Alert>
       ) : null}
+      {setupPending ? (
+        <p data-testid="setup-locked-note" className="text-muted-foreground">
+          {t('auth.setup.lockedNote')}
+        </p>
+      ) : null}
+      {setupPending ? account : null}
       <PushCard />
-      <div id="ajustes-contrasena" className={sectionClass}>
-        <h2 className="font-display text-3xl font-semibold tracking-wide">
-          {t('auth.account.title')}
-        </h2>
-        <PasswordCard />
-        {isManager ? (
-          <div id="ajustes-2fa" className="scroll-mt-28">
-            <TotpSetupCard />
-          </div>
-        ) : null}
-      </div>
+      {setupPending ? null : account}
       {isManager ? (
         <div id="ajustes-pin" className={sectionClass}>
           <PinCard />

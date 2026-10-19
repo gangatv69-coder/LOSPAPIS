@@ -225,6 +225,15 @@ test.describe('acceso y roles', () => {
       // Mientras no la cambie, el resto de pestañas vuelven aquí.
       await barber.goto('/caja');
       await expect(barber).toHaveURL(/\/ajustes\?paso=contrasena$/);
+      // Y en la cabecera llevan candado: al tocarlas se dice qué falta, sin salir de Ajustes.
+      const nav = barber.getByRole('navigation', { name: 'Navegación principal' });
+      await expect(nav.getByRole('link')).toHaveText(['Ajustes']);
+      await nav.getByRole('button', { name: 'Panel' }).click();
+      await expect(
+        barber.getByText('Primero cambia tu contraseña temporal: está aquí, en Ajustes → Cuenta.'),
+      ).toBeVisible();
+      await expect(barber).toHaveURL(/\/ajustes\?paso=contrasena$/);
+      await expect(barber.getByTestId('setup-locked-note')).toBeVisible();
 
       await barber.getByTestId('password-current').fill(String(temporaryPassword));
       await barber.getByTestId('password-new').fill('Barbero-e2e-2026!');
@@ -232,6 +241,9 @@ test.describe('acceso y roles', () => {
       await barber.getByTestId('password-submit').click();
       await expect(barber.getByText('Contraseña cambiada')).toBeVisible();
       await expect(barber.getByTestId('must-change-password')).toHaveCount(0);
+      // Sin pasos pendientes, el candado desaparece.
+      await expect(nav.getByRole('link')).toHaveText(['Panel', 'Ajustes']);
+      await expect(barber.getByTestId('setup-locked-note')).toHaveCount(0);
 
       // Un barbero no administra usuarios: ni la sección ni la ruta de la API.
       await expect(barber.getByTestId('users-admin')).toHaveCount(0);

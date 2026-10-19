@@ -8,7 +8,8 @@
     "team": "Equipo",
     "dashboard": "Panel",
     "audit": "Auditoría",
-    "settings": "Ajustes"
+    "settings": "Ajustes",
+    "lockedHint": "Bloqueada hasta que termines de configurar tu cuenta en Ajustes."
   },
   "language": {
     "label": "Idioma",
@@ -127,6 +128,13 @@
     },
     "account": {
       "title": "Cuenta"
+    },
+    "setup": {
+      "locked": {
+        "contrasena": "Primero cambia tu contraseña temporal: está aquí, en Ajustes → Cuenta.",
+        "2fa": "Primero activa la verificación en dos pasos: está aquí, en Ajustes → Cuenta."
+      },
+      "lockedNote": "Hasta que termines, las demás pestañas llevan candado. Los pasos están justo aquí debajo, en «Cuenta»."
     },
     "password": {
       "title": "Contraseña",

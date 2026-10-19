@@ -17,7 +17,14 @@ import { toast } from 'sonner';
 import { AppHeader } from '@/components/app-header';
 import { Button } from '@/components/ui/button';
 import { authStateQueryOptions } from '@/features/auth/auth.queries';
-import { guardRoute, isAuthenticated, isPublicPath } from '@/features/auth/auth-guard';
+import {
+  guardRoute,
+  isAuthenticated,
+  isPublicPath,
+  normalizePath,
+  type SetupStep,
+} from '@/features/auth/auth-guard';
+import { scrollToSettingsStep } from '@/features/auth/settings-scroll';
 import { useAuth } from '@/features/auth/use-auth';
 
 export interface RouterContext {
@@ -75,6 +82,15 @@ function RootLayout() {
     await router.invalidate();
   }
 
+  /** Pestaña con candado: se dice qué paso falta y se baja hasta él en Ajustes. */
+  function handleLockedTab(step: SetupStep) {
+    // Mismo id: tocar varias pestañas seguidas no apila avisos.
+    toast.info(t(`auth.setup.locked.${step}`), { id: 'setup-locked' });
+    // Ya en Ajustes con ese paso la URL no cambia y la página no vuelve a bajar sola.
+    if (normalizePath(pathname) === '/ajustes') scrollToSettingsStep(step, 'smooth');
+    void router.navigate({ to: '/ajustes', search: { paso: step } });
+  }
+
   return (
     <div className="flex min-h-dvh flex-col">
       <AppHeader
@@ -84,6 +100,7 @@ function RootLayout() {
         onLogout={() => {
           void handleLogout();
         }}
+        onLockedTab={handleLockedTab}
       />
       <main id="main" className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
         <Outlet />
