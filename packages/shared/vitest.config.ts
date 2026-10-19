@@ -5,5 +5,7 @@ export default defineConfig({
     name: 'shared',
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    // fast-check: número de ejecuciones por propiedad para todo el paquete.
+    setupFiles: ['./vitest.setup.ts'],
   },
 });

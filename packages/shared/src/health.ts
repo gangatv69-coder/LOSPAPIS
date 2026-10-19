@@ -1,6 +1,6 @@
 import * as z from 'zod';
 
-import { TIMEZONE } from './dates.ts';
+import { TIMEZONE } from './time.ts';
 
 /** Respuesta de GET /health y GET /api/health. El servidor la produce; la pantalla la valida. */
 export const healthSchema = z.object({
