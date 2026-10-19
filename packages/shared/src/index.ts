@@ -1,3 +1,4 @@
+export * from './audit.ts';
 export * from './auth.ts';
 export * from './base32.ts';
 export * from './brand.ts';

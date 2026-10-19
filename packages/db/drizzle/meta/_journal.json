@@ -64,6 +64,20 @@
       "when": 1792403969245,
       "tag": "0008_sales-patterns",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792422807487,
+      "tag": "0009_discounts-voids",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792422807972,
+      "tag": "0010_discounts-voids-patterns",
+      "breakpoints": true
     }
   ]
 }
