@@ -1787,7 +1787,7 @@ fc.configureGlobal({ numRuns: 200 });
 
 #### CREATE packages/shared/src/money.ts
 
-- IMPLEMENT: copiar `research/lab/pbt/money.ts` con estos cambios: `parseEuroToCents` → `parseCents`; quitar la línea `left = 0;` de `allocate`; añadir al final los esquemas Zod. El símbolo de euro va precedido de **U+00A0** (espacio no separable): escribirlo como escape `' €'`, nunca pegado.
+- IMPLEMENT: copiar `research/lab/pbt/money.ts` con estos cambios: `parseEuroToCents` → `parseCents`; quitar la línea `left = 0;` de `allocate`; añadir al final los esquemas Zod. El símbolo de euro va precedido de **U+00A0** (espacio no separable): escribirlo como escape `'\u00a0€'`, nunca pegado.
 
 ```ts
 import * as z from 'zod';
@@ -1796,7 +1796,7 @@ import * as z from 'zod';
 // se hacen con enteros y cadenas. Se ejecuta tal cual en Node 26 (type stripping) y en el Safari del iPad.
 
 /** " €": espacio NO separable (U+00A0) + símbolo euro (U+20AC). Es lo que emiten Intl es-ES e it-IT. */
-export const EURO_SUFFIX = ' €';
+export const EURO_SUFFIX = '\u00a0€';
 
 /** Tope de la caja: 999.999.999,99 € (11 dígitos en céntimos, muy por debajo de 2^53). */
 export const MAX_CENTS = 99_999_999_999;
@@ -1964,7 +1964,7 @@ export type Bps = z.infer<typeof bpsSchema>;
 
 #### CREATE packages/shared/src/money.test.ts
 
-- IMPLEMENT: tabla de ejemplos + propiedades con `fc.assert(fc.property(...))` (sin `@fast-check/vitest`). Expectativas con `' €'`.
+- IMPLEMENT: tabla de ejemplos + propiedades con `fc.assert(fc.property(...))` (sin `@fast-check/vitest`). Expectativas con `'\u00a0€'`.
 
 ```ts
 import fc from 'fast-check';
@@ -1988,15 +1988,15 @@ const posCents = fc.integer({ min: 0, max: MAX_CENTS });
 
 describe('formatCents', () => {
   it('ejemplos fijos (U+00A0 antes de €)', () => {
-    expect(formatCents(2700)).toBe('27,00 €');
-    expect(formatCents(123450)).toBe('1234,50 €'); // CLDR es/it: sin punto de miles hasta 5 cifras
-    expect(formatCents(1234567)).toBe('12.345,67 €');
-    expect(formatCents(123450, { minGroupingDigits: 1 })).toBe('1.234,50 €');
+    expect(formatCents(2700)).toBe('27,00\u00a0€');
+    expect(formatCents(123450)).toBe('1234,50\u00a0€'); // CLDR es/it: sin punto de miles hasta 5 cifras
+    expect(formatCents(1234567)).toBe('12.345,67\u00a0€');
+    expect(formatCents(123450, { minGroupingDigits: 1 })).toBe('1.234,50\u00a0€');
     expect(formatCents(2700, { withSymbol: false })).toBe('27,00');
-    expect(formatCents(-50)).toBe('-0,50 €');
-    expect(formatCents(5)).toBe('0,05 €');
-    expect(formatCents(0)).toBe('0,00 €');
-    expect(formatCents(-0)).toBe('0,00 €');
+    expect(formatCents(-50)).toBe('-0,50\u00a0€');
+    expect(formatCents(5)).toBe('0,05\u00a0€');
+    expect(formatCents(0)).toBe('0,00\u00a0€');
+    expect(formatCents(-0)).toBe('0,00\u00a0€');
     expect(() => formatCents(27.5)).toThrow(RangeError);
     expect(() => formatCents(Number.NaN)).toThrow(RangeError);
   });
@@ -2013,7 +2013,7 @@ describe('formatCents', () => {
     fc.assert(
       fc.property(cents, fc.constantFrom(1, 2), (c, mgd) => {
         const s = formatCents(c, { minGroupingDigits: mgd as 1 | 2 });
-        expect(s).toMatch(/^-?(?:\d{1,3}(?:\.\d{3})+|\d+),\d{2} €$/);
+        expect(s).toMatch(/^-?(?:\d{1,3}(?:\.\d{3})+|\d+),\d{2}\u00a0€$/);
         expect(s.indexOf(',')).toBe(s.length - 5);
         expect(s.includes(' ')).toBe(false);
       }),
@@ -2047,7 +2047,7 @@ describe('parseCents', () => {
     expect(parseCents('12')).toBe(1200);
     expect(parseCents('12,5')).toBe(1250);
     expect(parseCents(' 12,50 € ')).toBe(1250);
-    expect(parseCents('27,00 €')).toBe(2700);
+    expect(parseCents('27,00\u00a0€')).toBe(2700);
     expect(parseCents('1.234')).toBe(123400);
     expect(parseCents('0,5')).toBe(50);
     expect(parseCents('-3,00', { allowNegative: true })).toBe(-300);
