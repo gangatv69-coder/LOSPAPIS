@@ -5,10 +5,11 @@ import { type E2eCredentials, requireCredentials } from './auth-files.ts';
 import { typePin } from './pin.ts';
 
 /*
- * Cobro en la caja (LP-09) en el iPad apaisado, con la sesión del manager del proyecto `setup` (sin cookie
- * de dispositivo: la aserción del PIN se firma desde la sesión) y la base sembrada con los ejemplos de la
- * maqueta (pnpm db:seed). Los textos salen de src/locales/es.json. Corre después del proyecto `desktop`
- * (playwright.config.ts): allí auth.spec.ts bloquea y desbloquea el PIN del mismo manager.
+ * Cobro en la caja (LP-09) con descuentos, cortes gratis, anulaciones y la auditoría (LP-10), en el iPad
+ * apaisado, con la sesión del manager del proyecto `setup` (sin cookie de dispositivo: la aserción del PIN se
+ * firma desde la sesión) y la base sembrada con los ejemplos de la maqueta (pnpm db:seed). Los textos salen
+ * de src/locales/es.json. Corre después del proyecto `desktop` (playwright.config.ts): allí auth.spec.ts
+ * bloquea y desbloquea el PIN del mismo manager.
  */
 
 /**
@@ -58,6 +59,31 @@ async function chargeOnce(page: Page, credentials: E2eCredentials): Promise<numb
   await expect(page.getByTestId('cart-empty')).toBeVisible();
   await expect(page.getByTestId('cart-total')).toHaveText('0,00 €');
   return elapsed;
+}
+
+/** B1 y los servicios (y productos) de la maqueta por su nombre, una unidad de cada uno. */
+async function fillCart(page: Page, services: string[], products: string[] = []): Promise<void> {
+  await page.locator('[data-testid="catalog-barber"][data-code="B1"]').click();
+  for (const name of services) {
+    await page.locator(`[data-testid="catalog-service"][data-name="${name}"]`).click();
+  }
+  if (products.length === 0) return;
+  await page.getByTestId('catalog-preview-tab-products').click();
+  for (const name of products) {
+    await page.locator(`[data-testid="catalog-product"][data-name="${name}"]`).click();
+  }
+}
+
+/** Firma en el diálogo del PIN, después de comprobar qué se está firmando. */
+async function signWithPin(
+  page: Page,
+  credentials: E2eCredentials,
+  description: string,
+): Promise<void> {
+  const dialog = page.getByTestId('pin-dialog');
+  await expect(dialog.getByText(description)).toBeVisible();
+  await dialog.getByTestId('pin-manager').filter({ hasText: credentials.displayName }).click();
+  await typePin(dialog, credentials.pin);
 }
 
 test.describe('cobro en la caja (iPad)', () => {
@@ -111,5 +137,178 @@ test.describe('cobro en la caja (iPad)', () => {
     const total = parseCents((await section.getByTestId('today-sales-total').textContent()) ?? '');
     expect(total).toBe(sum);
     await expect(section.getByTestId('today-sales-count')).toHaveText(`${count} cobros`);
+  });
+
+  // LP-10. Los reintentos de CI repiten el grupo entero sobre la misma base: por eso se busca el cobro más
+  // reciente con esas líneas y los totales se comparan con lo que había antes, nunca con números fijos.
+
+  test('descuento de fidelidad del 10 % en todo el cobro: lo autoriza el PIN del cobro y queda quién y por qué', async ({
+    page,
+  }) => {
+    const credentials = requireCredentials();
+    await page.goto('/caja');
+    await fillCart(page, ['Corte clásico', 'Fade']);
+    const cart = page.getByTestId('cart-panel');
+    await expect(cart.getByTestId('cart-total')).toHaveText('33,00 €');
+
+    await cart.getByTestId('discount-open').click();
+    const dialog = page.getByTestId('discount-dialog');
+    await expect(dialog.getByTestId('discount-kind-loyalty')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await dialog.getByTestId('discount-value').fill('10');
+    await expect(dialog.getByTestId('discount-preview')).toHaveText(
+      'Descuento −3,30 € → total 29,70 €',
+    );
+    // Sin motivo no se aplica.
+    await expect(dialog.getByTestId('discount-apply')).toBeDisabled();
+    await dialog.getByTestId('discount-reason').fill('cliente habitual');
+    await dialog.getByTestId('discount-apply').click();
+    await expect(dialog).toBeHidden();
+
+    await expect(cart.getByTestId('cart-discount-label')).toHaveText('Fidelidad −10 % · −3,30 €');
+    await expect(cart.getByTestId('cart-subtotal')).toHaveText('33,00 €');
+    await expect(cart.getByTestId('cart-discount-total')).toHaveText('−3,30 €');
+    await expect(cart.getByTestId('cart-total')).toHaveText('29,70 €');
+    await cart.getByTestId('method-card').click();
+    await cart.getByTestId('charge').click();
+    await signWithPin(page, credentials, 'Cobro de 29,70 € con descuento de 3,30 € (fidelidad)');
+
+    const done = page.getByTestId('sale-done');
+    await expect(done.getByTestId('sale-done-fiscal')).toHaveText(
+      'Registratore: 29,70 € · TARJETA',
+    );
+    await expect(done.getByTestId('sale-done-discount')).toContainText('−3,30 €');
+    await expect(done.getByTestId('sale-done-discount-item')).toHaveText(
+      'Fidelidad −10 % · −3,30 € · cliente habitual',
+    );
+    await done.getByTestId('new-sale').click();
+
+    const row = page.getByTestId('today-sale').filter({ hasText: 'Corte clásico · Fade' }).first();
+    await expect(row.getByTestId('today-sale-total')).toHaveText('29,70 €');
+    await expect(row.getByTestId('today-sale-discount')).toHaveText(
+      `Fidelidad −10 % · ${credentials.displayName}`,
+    );
+  });
+
+  test('corte gratis en el corte con una cera: el corte sigue en el cobro a 0,00 € y se cobra la cera', async ({
+    page,
+  }) => {
+    const credentials = requireCredentials();
+    await page.goto('/caja');
+    await fillCart(page, ['Corte clásico'], ['Cera mate']);
+    const cart = page.getByTestId('cart-panel');
+
+    await cart.getByTestId('discount-open').click();
+    const dialog = page.getByTestId('discount-dialog');
+    await dialog.getByTestId('discount-kind-courtesy').click();
+    // Solo sobre un servicio y siempre del 100 %: no hay valor que escribir.
+    await expect(dialog.getByTestId('discount-target')).toHaveValue(/^service:/);
+    await expect(dialog.getByTestId('discount-value')).toHaveCount(0);
+    await dialog.getByTestId('discount-reason').fill('cumpleaños');
+    await dialog.getByTestId('discount-apply').click();
+
+    const classic = cart.locator('[data-testid="cart-line"][data-name="Corte clásico"]');
+    await expect(classic.getByTestId('cart-line-original')).toHaveText('15,00 €');
+    await expect(classic.getByTestId('cart-line-total')).toHaveText('0,00 €');
+    await expect(cart.getByTestId('cart-total')).toHaveText('12,00 €');
+    await cart.getByTestId('tender-1200').click();
+    await cart.getByTestId('charge').click();
+    await signWithPin(
+      page,
+      credentials,
+      'Cobro de 12,00 € con descuento de 15,00 € (corte gratis)',
+    );
+
+    const done = page.getByTestId('sale-done');
+    await expect(done.getByTestId('sale-done-fiscal')).toHaveText(
+      'Registratore: 12,00 € · EFECTIVO',
+    );
+    await done.getByTestId('new-sale').click();
+
+    const row = page
+      .getByTestId('today-sale')
+      .filter({ hasText: 'Corte clásico · Cera mate' })
+      .first();
+    await expect(row.getByTestId('today-sale-total')).toHaveText('12,00 €');
+    await expect(row.getByTestId('today-sale-discount')).toHaveText(
+      `Corte gratis · ${credentials.displayName}`,
+    );
+  });
+
+  test('anular el cobro con descuento: motivo y PIN; queda tachado con quién y por qué y los totales ya no lo cuentan', async ({
+    page,
+  }) => {
+    const credentials = requireCredentials();
+    await page.goto('/caja');
+    const section = page.getByTestId('today-sales');
+    const row = section
+      .getByTestId('today-sale')
+      .filter({ hasText: 'Corte clásico · Fade' })
+      .first();
+    await expect(row.getByTestId('today-sale-total')).toHaveText('29,70 €');
+    const totalNow = async () =>
+      parseCents((await section.getByTestId('today-sales-total').textContent()) ?? '');
+    const countNow = async () =>
+      Number.parseInt((await section.getByTestId('today-sales-count').textContent()) ?? '', 10);
+    const totalBefore = await totalNow();
+    const countBefore = await countNow();
+
+    await row.getByTestId('today-sale-void').click();
+    const dialog = page.getByTestId('void-dialog');
+    await expect(dialog.getByText('Anular cobro de 29,70 €')).toBeVisible();
+    await expect(dialog.getByTestId('void-confirm')).toBeDisabled();
+    await dialog.getByTestId('void-reason').fill('prueba');
+    await dialog.getByTestId('void-confirm').click();
+    await signWithPin(page, credentials, 'Anular cobro de 29,70 €');
+
+    await expect(page.getByText('Cobro anulado').last()).toBeVisible();
+    // Sigue en la lista, tachado, sin "Anular" y con quién y por qué.
+    const voided = section.locator('[data-testid="today-sale"][data-voided="true"]').filter({
+      hasText: 'Corte clásico · Fade',
+    });
+    await expect(voided.first().getByTestId('today-sale-voided')).toHaveText(
+      `Anulado · prueba · ${credentials.displayName}`,
+    );
+    await expect(voided.first().getByTestId('today-sale-void')).toHaveCount(0);
+    await expect.poll(totalNow).toBe(totalBefore - 2970);
+    await expect.poll(countNow).toBe(countBefore - 1);
+    await expect(section.getByTestId('today-sales-voided')).toHaveText(/^Anulados: \d+ \(/);
+  });
+
+  test('la auditoría, abierta con el dedo desde la pestaña, lista el descuento, el corte gratis y la anulación', async ({
+    page,
+  }) => {
+    const credentials = requireCredentials();
+    await page.goto('/caja');
+    await page
+      .getByRole('navigation', { name: 'Navegación principal' })
+      .getByRole('link', { name: 'Auditoría' })
+      .tap();
+    await expect(page).toHaveURL(/\/auditoria$/);
+
+    const viewer = page.getByTestId('audit-viewer');
+    const entries = viewer.getByTestId('audit-entry');
+    const type = viewer.getByTestId('audit-type');
+
+    await type.selectOption('discounts');
+    const discount = entries.filter({ hasText: 'cliente habitual' }).first();
+    await expect(discount.getByTestId('audit-entry-action')).toHaveText('Descuento');
+    await expect(discount.getByTestId('audit-entry-detail')).toHaveText(
+      'Fidelidad 10 % · −3,30 € · cliente habitual',
+    );
+    await expect(discount).toContainText(credentials.displayName);
+    await expect(entries.filter({ hasText: 'cumpleaños' })).toHaveCount(0);
+
+    await type.selectOption('courtesy');
+    await expect(
+      entries.filter({ hasText: 'cumpleaños' }).first().getByTestId('audit-entry-detail'),
+    ).toHaveText('Corte clásico · −15,00 € · cumpleaños');
+
+    await type.selectOption('voids');
+    const voided = entries.filter({ hasText: 'prueba' }).first();
+    await expect(voided.getByTestId('audit-entry-action')).toHaveText('Anulación');
+    await expect(voided.getByTestId('audit-entry-detail')).toHaveText('29,70 € · prueba');
   });
 });
