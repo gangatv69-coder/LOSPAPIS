@@ -41,6 +41,16 @@ jobs:
       - name: Dependencias
         run: pnpm install --frozen-lockfile
 
+      # PostgreSQL 18 real con los roles owner/app y la base de pruebas (infra/postgres/init/01-roles.sh),
+      # exactamente igual que en el PC: mismo compose.yaml. El runner trae Docker 28 y Compose 2.38;
+      # --wait espera al healthcheck (pg_isready por TCP). Sin .env, compose y las pruebas usan .env.example.
+      - name: Base de datos (docker compose)
+        run: docker compose up -d --wait --wait-timeout 120 db
+
+      # Comprueba el comando real de migraciones como owner; las pruebas migran aparte la base de pruebas.
+      - name: Migraciones (pnpm db:migrate)
+        run: pnpm db:migrate
+
       # La versión exacta de @playwright/test instalada (1.64.1): es la clave de la caché de navegadores.
       - name: Versión de Playwright
         id: playwright
@@ -66,7 +76,8 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: pnpm --filter @los-papis/web exec playwright install-deps chromium
 
-      # Biome, tipos, Vitest y Playwright, en ese orden; para al primer fallo.
+      # Biome, tipos, drizzle-kit check, Vitest (web, api, shared, db contra PostgreSQL) y Playwright, en ese
+      # orden; para al primer fallo.
       - name: pnpm check
         run: pnpm check
 
@@ -80,3 +91,7 @@ jobs:
             apps/web/test-results/
           if-no-files-found: ignore
           retention-days: 7
+
+      - name: Registros de la base de datos (solo si algo falla)
+        if: failure()
+        run: docker compose logs db

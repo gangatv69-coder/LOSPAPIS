@@ -72,24 +72,26 @@ Cada ticket es una sola cosa que se puede probar por separado y trae su propio c
 
 **Qué entrega:** la regla de que "el dinero no se borra ni se edita", impuesta por la propia base de datos. También las herramientas de dinero en céntimos y el "día de caja" con hora de Roma.
 
+**Estado: HECHO el 19 de octubre de 2026** (commits `92b97bf` → `5f356d7` más el de documentación; plan, spike y desviaciones en `.claude/plans/lp-02-base-de-datos.md`). `pnpm check` verde (90 pruebas unitarias e integración, 29 de ellas contra PostgreSQL 18 real; 8 e2e), `docker compose up --build` sano en `http://localhost:8080` con `db`, `api` y `web`, GitHub Actions `check` en verde con la base de datos levantada por el mismo `compose.yaml`.
+
 **Criterios de aceptación**
-- [ ] Drizzle ORM 0.45.x (0.45.2 o posterior) con migraciones SQL y un comando para aplicarlas. Hay dos roles de base de datos: `owner`, que aplica migraciones, y `app`, que usa la aplicación.
-- [ ] Tablas base: `shops` (a qué barbería pertenece cada dato), `users` (sin la lógica de acceso, que llega en LP-05) y `audit_events`.
-- [ ] Un patrón reutilizable para "tabla que solo crece": el rol `app` solo puede insertar y leer, y un trigger rechaza UPDATE y DELETE. Una prueba demuestra que no se puede editar ni borrar ni siquiera con SQL directo.
-- [ ] Toda tabla de negocio lleva `shop_id`, y el acceso a datos siempre filtra por barbería. Una prueba lo verifica.
-- [ ] En `packages/shared`, el dinero en céntimos enteros:
+- [x] Drizzle ORM 0.45.x (0.45.2 o posterior) con migraciones SQL y un comando para aplicarlas. Hay dos roles de base de datos: `owner`, que aplica migraciones, y `app`, que usa la aplicación. (drizzle-orm 0.45.4 + drizzle-kit 0.31.11; `pnpm db:migrate`; roles creados por `infra/postgres/init/01-roles.sh`.)
+- [x] Tablas base: `shops` (a qué barbería pertenece cada dato), `users` (sin la lógica de acceso, que llega en LP-05) y `audit_events`.
+- [x] Un patrón reutilizable para "tabla que solo crece": el rol `app` solo puede insertar y leer, y un trigger rechaza UPDATE y DELETE. Una prueba demuestra que no se puede editar ni borrar ni siquiera con SQL directo. (`CALL make_append_only('tabla')`: trigger `reject_mutation` siempre activo, también para TRUNCATE y para el dueño; `packages/db/test/append-only.test.ts`.)
+- [x] Toda tabla de negocio lleva `shop_id`, y el acceso a datos siempre filtra por barbería. Una prueba lo verifica. (`CALL make_shop_scoped('tabla')`: Row Level Security con `withShop()`; `packages/db/test/shop-isolation.test.ts` comprueba además que toda tabla nueva de `public` esté clasificada.)
+- [x] En `packages/shared`, el dinero en céntimos enteros:
     - formato `27,00 €` para italiano y español;
     - lectura de "12,50";
-    - prohibido usar decimales flotantes, con pruebas de propiedades.
-- [ ] En `packages/shared`, el tiempo:
+    - prohibido usar decimales flotantes, con pruebas de propiedades (fast-check 4.10.2, 200 casos por propiedad).
+- [x] En `packages/shared`, el tiempo:
     - se guarda en UTC y se muestra en hora de Roma;
-    - cálculo del "día de caja";
-    - pruebas de los cambios de hora del 28 de marzo y del 31 de octubre de 2027.
-- [ ] Las pruebas de integración corren contra PostgreSQL 18 real, en Docker y en CI.
+    - cálculo del "día de caja" (`cashDay`, `cashDayRange`);
+    - pruebas de los cambios de hora del 28 de marzo y del 31 de octubre de 2027 (día de 23 h y de 25 h).
+- [x] Las pruebas de integración corren contra PostgreSQL 18 real, en Docker y en CI (base de pruebas `los_papis_test`, vaciada y migrada en cada ejecución).
 
 **Contexto:** Arquitectura §4.2 (modelo, reglas, Día de caja, Horario de Roma) y §1 (criterios 1 y 4) · PRD §6 (Reglas fijas).
-**Archivos (estimado):** `packages/db/` (configuración, esquema base, migraciones, roles y triggers), `packages/shared/src/money.ts`, `packages/shared/src/time.ts` y sus pruebas.
-**Tamaño:** ~700–1000 líneas.
+**Archivos (reales):** `packages/db/` (`drizzle.config.ts`, `src/schema/*`, `src/{client,tenant,env,migrate,seed,registry}.ts`, `src/cli/*`, `drizzle/0000_patterns.sql`, `drizzle/0001_base-tables.sql`, `drizzle/0002_apply-patterns.sql`, `test/*`), `packages/shared/src/money.ts`, `packages/shared/src/time.ts` y sus pruebas, `infra/postgres/init/01-roles.sh`, `.env.example`, `compose.yaml`, `.github/workflows/check.yml`, `README.md`.
+**Tamaño:** ~700–1000 líneas estimadas; reales ~2.700 añadidas (unas 950 de pruebas; el resto esquema, SQL, configuración, documentación e instantáneas JSON generadas por drizzle-kit).
 **Depende de:** LP-01.
 
 ### LP-03 — Servidor de pruebas en el VPS, despliegue y avisos push (S4)
