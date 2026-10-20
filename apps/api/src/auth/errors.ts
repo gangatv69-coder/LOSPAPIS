@@ -1,6 +1,6 @@
 /**
  * Códigos de error estables de la API (plan LP-05, "Errores de la API"; LP-08 añade los del catálogo, LP-09
- * los del cobro y LP-10 los de las anulaciones). La pantalla decide el texto por el código, nunca por el
+ * los del cobro, LP-10 los de las anulaciones y LP-23 el de las propinas). La pantalla decide el texto por el código, nunca por el
  * mensaje. Los `validation` 400 los produce el validador de cuerpos y parámetros (validate.ts).
  */
 export type AuthErrorCode =
@@ -38,7 +38,9 @@ export type AuthErrorCode =
   | 'barber_unavailable'
   // Anulaciones (LP-10): el cobro ya estaba anulado, o es de un día de caja que ya no es el actual.
   | 'sale_voided'
-  | 'sale_day_closed';
+  | 'sale_day_closed'
+  // Propinas (LP-23): el cobro ya tiene su propina.
+  | 'tip_recorded';
 
 export type AuthErrorStatus = 400 | 401 | 403 | 404 | 409 | 413 | 423 | 429;
 

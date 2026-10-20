@@ -14,12 +14,14 @@ import {
   type SalePaymentRow,
   type SaleReceiptRow,
   type SaleRow,
+  type SaleTipRow,
   type SaleVoidRow,
   saleDiscounts,
   saleLines,
   salePayments,
   saleReceipts,
   sales,
+  saleTips,
   saleVoids,
   services,
   sql,
@@ -36,7 +38,9 @@ import {
   cashDay,
   changeFor,
   type DaySales,
+  dayTipsOf,
   type RecordReceiptRequest,
+  type RecordTipRequest,
   type Sale,
   type SaleDiscount,
   type SaleLine,
@@ -44,6 +48,7 @@ import {
   type SaleLineRef,
   type SalePayment,
   type SalePaymentInput,
+  type SaleTip,
   type SaleVoid,
   saleLineKey,
   toRomeIso,
@@ -56,11 +61,11 @@ import { type PinAssertion, verifyPinAssertion } from '../auth/tokens.ts';
 import type { AuthContext, AuthDeps } from '../auth/types.ts';
 
 /**
- * Cobro en la caja (LP-09) con descuentos, cortes gratis y anulaciones (LP-10), sin HTTP. Mismo patrón que el
- * catálogo: cada método abre su transacción con la barbería fijada (`withShop`) y deja la auditoría dentro de
- * ella. El libro solo crece: un cobro se inserta con sus líneas (precio y nombre de la base en ese momento,
- * nunca del cliente), sus descuentos y su pago, y después no se toca; el número de recibo y la anulación son
- * filas nuevas (`sale_receipts`, `sale_voids`).
+ * Cobro en la caja (LP-09) con descuentos, cortes gratis y anulaciones (LP-10) y propinas (LP-23), sin HTTP. Mismo
+ * patrón que el catálogo: cada método abre su transacción con la barbería fijada (`withShop`) y deja la auditoría
+ * dentro de ella. El libro solo crece: un cobro se inserta con sus líneas (precio y nombre de la base en ese
+ * momento, nunca del cliente), sus descuentos y su pago, y después no se toca; el número de recibo, la anulación y
+ * la propina son filas nuevas (`sale_receipts`, `sale_voids`, `sale_tips`).
  *
  * Idempotencia: el `id` lo genera el dispositivo. Repetir la misma petición (mismo `requestHash`) devuelve el
  * cobro ya guardado con `idempotent: true`; el mismo `id` con otro contenido es 409 `sale_conflict`. Dos
@@ -148,14 +153,16 @@ type SaleHead = {
 
 type DiscountWithName = { row: SaleDiscountRow; authorizedByName: string };
 type VoidWithName = { row: SaleVoidRow; byName: string };
+type TipWithNames = { row: SaleTipRow; barberName: string; byName: string };
 
-/** Lo que cuelga de un cobro: líneas, pago, recibos, descuentos (con quién los autorizó) y la anulación. */
+/** Lo que cuelga de un cobro: líneas, pago, recibos, descuentos (con quién los autorizó), la anulación y la propina. */
 type SaleParts = {
   lines: readonly SaleLineRow[];
   payments: readonly SalePaymentRow[];
   receipts: readonly SaleReceiptRow[];
   discounts: readonly DiscountWithName[];
   voided: VoidWithName | null;
+  tip: TipWithNames | null;
 };
 
 const toSaleLine = (row: SaleLineRow): SaleLine => ({
@@ -198,6 +205,16 @@ const toSaleVoid = ({ row, byName }: VoidWithName): SaleVoid => ({
   cashDay: row.cashDay,
 });
 
+const toSaleTip = ({ row, barberName, byName }: TipWithNames): SaleTip => ({
+  amountCents: row.amountCents,
+  method: row.method,
+  barberId: row.barberId,
+  barberName,
+  byId: row.recordedByUserId,
+  byName,
+  occurredAt: toRomeIso(row.occurredAt),
+});
+
 export const toSale = (head: SaleHead, parts: SaleParts): Sale => {
   const [payment] = parts.payments;
   if (!payment) throw new Error(`El cobro ${head.sale.id} no tiene pago`);
@@ -220,6 +237,7 @@ export const toSale = (head: SaleHead, parts: SaleParts): Sale => {
     // Un cobro tiene como mucho un recibo (409 al repetir); si hubiera varios, vale el último.
     receiptNumber: parts.receipts.at(-1)?.receiptNumber ?? null,
     voided: parts.voided ? toSaleVoid(parts.voided) : null,
+    tip: parts.tip ? toSaleTip(parts.tip) : null,
   };
 };
 
@@ -296,9 +314,9 @@ export const createSaleService = (deps: AuthDeps) => {
   };
 
   /**
-   * Varios cobros completos con seis consultas (cabeceras con sus nombres, líneas, pagos, recibos, descuentos
-   * con quién los autorizó y anulaciones con quién las firmó), en el orden de `saleIds`; los que no existan en
-   * esta barbería (la RLS esconde los de otras) se omiten.
+   * Varios cobros completos con siete consultas (cabeceras con sus nombres, líneas, pagos, recibos, descuentos
+   * con quién los autorizó, anulaciones con quién las firmó y propinas con su barbero y quién las firmó), en el
+   * orden de `saleIds`; los que no existan en esta barbería (la RLS esconde los de otras) se omiten.
    */
   const loadSales = async (tx: Tx, saleIds: readonly string[]): Promise<Sale[]> => {
     if (saleIds.length === 0) return [];
@@ -358,6 +376,17 @@ export const createSaleService = (deps: AuthDeps) => {
           .where(inArray(saleVoids.saleId, ids))
       ).map((entry) => [entry.row.saleId, entry]),
     );
+    // Una propina por cobro como mucho (índice único de sale_tips), con su barbero y quién la firmó.
+    const tips = new Map(
+      (
+        await tx
+          .select({ row: saleTips, barberName: barbers.displayName, byName: users.displayName })
+          .from(saleTips)
+          .innerJoin(barbers, eq(barbers.id, saleTips.barberId))
+          .innerJoin(users, eq(users.id, saleTips.recordedByUserId))
+          .where(inArray(saleTips.saleId, ids))
+      ).map((entry) => [entry.row.saleId, entry]),
+    );
     const headsById = new Map(heads.map((head) => [head.sale.id, head]));
     return ids.flatMap((id) => {
       const head = headsById.get(id);
@@ -369,6 +398,7 @@ export const createSaleService = (deps: AuthDeps) => {
           receipts: receipts.get(id) ?? [],
           discounts: discounts.get(id) ?? [],
           voided: voids.get(id) ?? null,
+          tip: tips.get(id) ?? null,
         }),
       ];
     });
@@ -623,6 +653,64 @@ export const createSaleService = (deps: AuthDeps) => {
       return loadSale(tx, sale.id);
     });
 
+  const tipOnce = (ctx: AuthContext, id: string, input: RecordTipRequest) =>
+    run<Sale>(async (tx, at) => {
+      assertCashier(ctx);
+      const { manager } = await verifiedAssertion(tx, ctx, input.pinAssertion, at);
+      const [sale] = await tx.select().from(sales).where(eq(sales.id, id));
+      if (!sale) throw new AuthError('not_found', 404);
+      const [voided] = await tx
+        .select({ id: saleVoids.id })
+        .from(saleVoids)
+        .where(eq(saleVoids.saleId, sale.id))
+        .limit(1);
+      if (voided) throw new AuthError('sale_voided', 409);
+      // Como las anulaciones: hasta el cierre de caja (LP-11), solo propinas de cobros del día de caja actual.
+      const today = cashDay(at);
+      if (sale.cashDay !== today) {
+        throw new AuthError('sale_day_closed', 409, { cashDay: sale.cashDay });
+      }
+      const [recorded] = await tx
+        .select({ id: saleTips.id })
+        .from(saleTips)
+        .where(eq(saleTips.saleId, sale.id))
+        .limit(1);
+      if (recorded) throw new AuthError('tip_recorded', 409);
+      const [barber] = await tx
+        .select({ name: barbers.displayName })
+        .from(barbers)
+        .where(eq(barbers.id, sale.barberId));
+      await tx.insert(saleTips).values({
+        shopId,
+        saleId: sale.id,
+        // La propina es del barbero del cobro.
+        barberId: sale.barberId,
+        amountCents: input.amountCents,
+        method: input.method,
+        recordedByUserId: manager.id,
+        deviceId: ctx.device?.id ?? null,
+        createdByUserId: ctx.user?.id ?? null,
+        cashDay: today,
+        occurredAt: at,
+      });
+      await audit(tx, {
+        shopId,
+        actorUserId: manager.id,
+        action: 'sale.tip_recorded',
+        entityType: 'sale',
+        entityId: sale.id,
+        after: {
+          amountCents: input.amountCents,
+          method: input.method,
+          barberId: sale.barberId,
+          barberName: barber?.name ?? null,
+        },
+        deviceId: ctx.device?.id,
+        occurredAt: at,
+      });
+      return loadSale(tx, sale.id);
+    });
+
   return {
     /**
      * POST /api/sales. Comprueba quién cobra, la aserción del PIN y el contenido; calcula los importes con los
@@ -650,7 +738,8 @@ export const createSaleService = (deps: AuthDeps) => {
 
     /**
      * GET /api/sales/day: los cobros de un día de caja (hoy si no se indica), los más recientes primero, con
-     * los anulados (marcados) y los totales sin ellos.
+     * los anulados (marcados) y los totales sin ellos; las propinas del día van aparte (`tips`), también sin las
+     * de los anulados.
      */
     daySales: (day?: CashDay): Promise<DaySales> =>
       run<DaySales>(async (tx, at) => {
@@ -664,7 +753,7 @@ export const createSaleService = (deps: AuthDeps) => {
           tx,
           ids.map((row) => row.id),
         );
-        return { day: target, sales: list, totals: totalsOf(list) };
+        return { day: target, sales: list, totals: totalsOf(list), tips: dayTipsOf(list) };
       }),
 
     /**
@@ -716,6 +805,22 @@ export const createSaleService = (deps: AuthDeps) => {
       } catch (error) {
         // Carrera: otra anulación del mismo cobro ganó el índice único mientras esta comprobaba.
         if (isUniqueViolation(error)) throw new AuthError('sale_voided', 409);
+        throw error;
+      }
+    },
+
+    /**
+     * POST /api/sales/:id/tip (LP-23): la propina de un cobro para su barbero, con el PIN de un manager (justo
+     * después de cobrar vale la aserción del cobro mientras no caduque). Quién → aserción (401) → cobro (404) →
+     * anulado (409 `sale_voided`) → día de caja actual (409 `sale_day_closed`) → ya tiene propina (409
+     * `tip_recorded`). Fila nueva en `sale_tips`, aparte del cobro: no cambia su total ni lo del registratore.
+     */
+    recordTip: async (ctx: AuthContext, id: string, input: RecordTipRequest): Promise<Sale> => {
+      try {
+        return await tipOnce(ctx, id, input);
+      } catch (error) {
+        // Carrera: otra propina del mismo cobro ganó el índice único mientras esta comprobaba.
+        if (isUniqueViolation(error)) throw new AuthError('tip_recorded', 409);
         throw error;
       }
     },

@@ -53,7 +53,9 @@ export type AuditAction =
   // `reason`. Uno por descuento (`sale.courtesy` si es un corte gratis) y uno por anulación.
   | 'sale.discount_applied'
   | 'sale.courtesy'
-  | 'sale.voided';
+  | 'sale.voided'
+  // Propina para el barbero del cobro (LP-23): actor = el manager que la firmó con su PIN.
+  | 'sale.tip_recorded';
 
 export type AuditEntityType =
   | 'user'

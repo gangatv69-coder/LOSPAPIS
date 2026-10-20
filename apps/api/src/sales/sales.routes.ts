@@ -2,6 +2,7 @@ import {
   cashDaySchema,
   createSaleRequestSchema,
   recordReceiptRequestSchema,
+  recordTipRequestSchema,
   voidSaleRequestSchema,
 } from '@los-papis/shared';
 import { Hono } from 'hono';
@@ -15,12 +16,16 @@ import type { SaleService } from './service.ts';
 /** GET /day?day=YYYY-MM-DD; sin `day`, el día de caja de hoy. */
 const daySalesQuerySchema = z.object({ day: cashDaySchema.optional() });
 
-/** Quien cobra o anula: el dispositivo de caja (el PIN del manager es la barrera) o un manager desde su sesión. */
+/**
+ * Quien cobra, anula o apunta una propina: el dispositivo de caja (el PIN del manager es la barrera) o un manager
+ * desde su sesión.
+ */
 const cashier = () => requireUserOrDevice({ role: 'manager', missing: 'device_required' });
 
 /**
- * /api/sales/*: el libro de cobros (LP-09) con descuentos y anulaciones (LP-10). Cobrar, guardar el recibo y
- * anular lo hacen la caja o un manager (siempre con el PIN de un manager); la lista del día y el detalle solo
+ * /api/sales/*: el libro de cobros (LP-09) con descuentos y anulaciones (LP-10) y propinas (LP-23). Cobrar, guardar
+ * el recibo, anular y apuntar la propina lo hacen la caja o un manager (con el PIN de un manager, salvo el recibo);
+ * la lista del día y el detalle solo
  * los managers (`ver_facturado_todo`). `/day` va antes de `/:id` para que no lo capture el parámetro. Los
  * errores de negocio (AuthError) los convierte app.ts en `{ error, ...detalle }`.
  */
@@ -41,6 +46,11 @@ export const createSaleRoutes = (salesService: SaleService) =>
     .post('/:id/receipt', cashier(), idParam(), jsonBody(recordReceiptRequestSchema), async (c) =>
       c.json(
         await salesService.recordReceipt(c.var.auth, c.req.valid('param').id, c.req.valid('json')),
+      ),
+    )
+    .post('/:id/tip', cashier(), idParam(), jsonBody(recordTipRequestSchema), async (c) =>
+      c.json(
+        await salesService.recordTip(c.var.auth, c.req.valid('param').id, c.req.valid('json')),
       ),
     )
     .post('/:id/void', cashier(), idParam(), jsonBody(voidSaleRequestSchema), async (c) =>

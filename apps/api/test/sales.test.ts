@@ -215,6 +215,7 @@ describe('cobro en la caja (LP-09)', () => {
       discounts: [],
       receiptNumber: null,
       voided: null,
+      tip: null,
     });
     firstSale = sale;
     // La fila guarda el usuario de la sesión, ningún dispositivo y el hash de la petición.
@@ -544,6 +545,7 @@ describe('cobro en la caja (LP-09)', () => {
         voidedCount: 0,
         voidedCents: 0,
       },
+      tips: { count: 0, totalCents: 0, cashCents: 0, cardCents: 0, byBarber: [] },
     });
     for (const bad of ['2026-13-01', '2027-02-29', 'hoy', '']) {
       const res = await manager.get(`/api/sales/day?day=${bad}`);
