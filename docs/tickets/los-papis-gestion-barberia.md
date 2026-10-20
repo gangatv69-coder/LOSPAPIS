@@ -494,19 +494,21 @@ Cada ticket es una sola cosa que se puede probar por separado y trae su propio c
 
 **Qué entrega:** la caja registra la propina de cada cobro para su barbero, aparte de la facturación: no entra en el total del cobro, ni en la línea del registratore, ni en los totales de lo cobrado. Al final del día se sabe cuánto le toca a cada barbero, en efectivo y con tarjeta. *Añadido el 20 de octubre de 2026 a petición del dueño; va entre LP-10 y LP-11.*
 
+**Estado: HECHO el 20 de octubre de 2026** (commits `06abab9` → `bff28e7` más el de cierre; plan y desviaciones en `.claude/plans/lp-23-propinas.md`). Propina en la pantalla del registratore y desde "Cobros de hoy", tabla `sale_tips` que solo crece, propinas del día por barbero aparte de los totales y filtro "Propinas" en la auditoría. `pnpm check` en verde (555 pruebas unitarias e integración, 35 e2e) y desplegado en `https://pruebas.37-27-38-218.sslip.io`. La entrega a los barberos llega con el cierre (LP-11); el trato fiscal de las propinas con tarjeta, con la respuesta del commercialista.
+
 **Criterios de aceptación**
-- [ ] Justo después de cobrar (pantalla del registratore) y desde "Cobros de hoy" se añade la propina de un cobro: importe (botones rápidos de 1, 2 y 5 €, otro importe y, en efectivo, "el vuelto como propina") y forma (efectivo o tarjeta; por defecto, la del cobro). Una por cobro, para el barbero del cobro.
-- [ ] La firma un manager con su PIN; justo después de cobrar vale la firma del cobro (2 minutos) y no se vuelve a pedir.
-- [ ] Fila nueva en un libro que solo crece (`sale_tips`): importe, forma, barbero, manager, dispositivo, hora y día de caja. Nunca se edita; si el cobro se anula, su propina deja de contar.
-- [ ] La propina no cambia el cobro: el registratore sigue mostrando solo el cobro. Con tarjeta, la pantalla dice qué teclear en el TPV (cobro + propina); en efectivo, el vuelto que queda.
-- [ ] "Cobros de hoy" enseña la propina de cada cobro y, aparte de los totales del cobro, las propinas del día: en efectivo, con tarjeta y por barbero.
-- [ ] Auditoría: cada propina deja su evento y el visor tiene el filtro "Propinas".
-- [ ] Solo cobros del día de caja actual, como las anulaciones (hasta el cierre de LP-11).
-- [ ] Pruebas de permisos, de una sola propina por cobro, de que nada se modifica, de que los totales del cobro no la cuentan y de que las de cobros anulados no cuentan; e2e en el iPad.
+- [x] Justo después de cobrar (pantalla del registratore) y desde "Cobros de hoy" se añade la propina de un cobro: importe (botones rápidos de 1, 2 y 5 €, otro importe y, en efectivo, "el vuelto como propina") y forma (efectivo o tarjeta; por defecto, la del cobro). Una por cobro, para el barbero del cobro.
+- [x] La firma un manager con su PIN; justo después de cobrar vale la firma del cobro (2 minutos) y no se vuelve a pedir.
+- [x] Fila nueva en un libro que solo crece (`sale_tips`): importe, forma, barbero, manager, dispositivo, hora y día de caja. Nunca se edita; si el cobro se anula, su propina deja de contar.
+- [x] La propina no cambia el cobro: el registratore sigue mostrando solo el cobro. Con tarjeta, la pantalla dice qué teclear en el POS (cobro + propina); en efectivo, el vuelto que queda.
+- [x] "Cobros de hoy" enseña la propina de cada cobro y, aparte de los totales del cobro, las propinas del día: en efectivo, con tarjeta y por barbero.
+- [x] Auditoría: cada propina deja su evento y el visor tiene el filtro "Propinas".
+- [x] Solo cobros del día de caja actual, como las anulaciones (hasta el cierre de LP-11).
+- [x] Pruebas de permisos, de una sola propina por cobro, de que nada se modifica, de que los totales del cobro no la cuentan y de que las de cobros anulados no cuentan; e2e en el iPad.
 
 **Contexto:** petición del dueño (20/10/2026) · PRD §6 (Reglas fijas: todo deja rastro) · Arquitectura §4.2 (Dinero, el libro que solo crece) · LP-09 y LP-10 (cobro, PIN y anulaciones).
-**Archivos (estimado):** `packages/shared/src/sales.ts`, `packages/db/src/schema/sales.ts` y migraciones `0011`/`0012`, `apps/api/src/sales/*`, `apps/web/src/features/register/*` (propina en el cobro hecho y en "Cobros de hoy") y `apps/web/src/features/audit/*`.
-**Tamaño:** ~1200–1500 líneas.
+**Archivos (reales):** `packages/shared/src/{sales,audit}.ts`, `packages/db/src/schema/sales.ts` y migraciones `0011`/`0012`, `packages/db/test/sale-tips.test.ts`, `apps/api/src/sales/*`, `apps/api/test/sale-tips.test.ts`, `apps/web/src/features/register/{tip-form,use-tip-recorder,sale-done,today-sales,today-sale-row}.tsx`, `apps/web/src/features/audit/audit-labels.ts`, `apps/web/e2e/register.spec.ts`, `README.md`.
+**Tamaño:** ~1200–1500 líneas estimadas.
 **Depende de:** LP-10. **Lo usa:** LP-11 (lo esperado en efectivo suma las propinas en efectivo; el cierre entrega a cada barbero sus propinas). **Pregunta para el commercialista:** cómo se documentan y se pagan las propinas con tarjeta (el TPV cobra cobro + propina; el registratore, solo el cobro).
 
 ---

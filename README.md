@@ -311,8 +311,21 @@ La pestaña **Caja** cobra como en la maqueta: barbero, servicios y productos de
 - `sale_discounts` y `sale_voids` solo crecen, como el resto del libro. Cada descuento, corte gratis y anulación deja su
   evento en `audit_events` con el motivo.
 - **Visor de auditoría** (pestaña **Auditoría**, solo managers; `GET /api/audit`): todo lo que queda en `audit_events`,
-  con filtros por tipo (descuentos, cortes gratis, anulaciones, fallos de PIN, cambios de precio), persona y días, del
-  más reciente al más antiguo y por páginas.
+  con filtros por tipo (descuentos, cortes gratis, anulaciones, propinas, fallos de PIN, cambios de precio), persona y
+  días, del más reciente al más antiguo y por páginas.
+
+## Propinas para los barberos
+
+- **Aparte del cobro** (LP-23): la propina no cambia el total del cobro, ni lo que marca el registratore, ni los
+  totales de lo cobrado. Es una fila nueva en `sale_tips` (una por cobro, solo crece), siempre para el barbero del
+  cobro, con su forma (efectivo o tarjeta) y el manager que la firmó con su PIN.
+- **Dónde:** justo después de cobrar, en la pantalla del registratore (1, 2 o 5 €, "el vuelto" si se pagó en efectivo,
+  u otro importe hasta 100 €), sin volver a pedir el PIN mientras valga la firma del cobro; o más tarde desde
+  "Cobros de hoy" → "+ Propina", con PIN (`POST /api/sales/:id/tip`). Con tarjeta, la pantalla dice qué teclear en el
+  POS (cobro + propina); en efectivo, el vuelto que queda.
+- **Cuentas:** "Cobros de hoy" enseña la propina de cada cobro y, aparte, las del día en efectivo, con tarjeta y por
+  barbero (`GET /api/sales/day` → `tips`). Las de cobros anulados no cuentan. La entrega a cada barbero llega con el
+  cierre de caja (LP-11).
 
 ## Estructura
 

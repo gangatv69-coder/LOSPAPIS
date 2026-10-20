@@ -105,3 +105,11 @@ Los del ticket LP-23 en `docs/tickets/los-papis-gestion-barberia.md`.
    cobro; cómo se documentan y se pagan.
 
 ## AMENDMENTS
+
+- 2026-10-20 — Implementado tal cual, con estos detalles: en pantalla el terminal de tarjeta se llama **POS** (como en
+  Italia y en el ticket de LP-11), no TPV. El formulario (`tip-form.tsx`) solo elige importe y forma; guardar, reutilizar
+  la firma del cobro (hasta 100 s de sus 120) y pedir el PIN lo hace el hook `use-tip-recorder.ts`, que comparten la
+  pantalla del registratore y "Cobros de hoy" (allí el diálogo de la propina se cierra antes de pedir el PIN, como al
+  anular). El texto de `sale_day_closed` pasó a ser general ("ese cobro es de otro día") porque ahora también lo
+  devuelve la propina. En italiano, propina = **mancia**. Revisado con capturas en el iPad y en el móvil (390 px, sin
+  desbordar). Pruebas: 5 de la tabla, 8 de integración, 6 de pantalla y 2 e2e en el iPad.
