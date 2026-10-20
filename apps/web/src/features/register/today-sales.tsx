@@ -14,6 +14,13 @@ import { toast } from 'sonner';
 import { PinDialog } from '@/components/pin-dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Table,
   TableBody,
   TableCell,
@@ -27,7 +34,9 @@ import { catalogLanguageOf } from '@/features/register/catalog-grid';
 import { voidSale } from '@/features/register/register.api';
 import { daySalesQueryOptions, SALES_QUERY_PREFIX } from '@/features/register/register.queries';
 import { registerErrorMessage } from '@/features/register/register-errors';
+import { TipForm } from '@/features/register/tip-form';
 import { amountClass, TodaySaleRow } from '@/features/register/today-sale-row';
+import { useTipRecorder } from '@/features/register/use-tip-recorder';
 import { VoidDialog } from '@/features/register/void-dialog';
 import { fallbackLanguage } from '@/i18n';
 import { isApiError } from '@/lib/api-client';
@@ -58,9 +67,10 @@ export function linesSummary(
 type VoidVariables = { sale: Sale; reason: string; assertion: string };
 
 /**
- * "Cobros de hoy" (solo managers): hora, líneas resumidas con sus descuentos, barbero, pago, manager e
- * importe, con los totales del día al pie (sin los anulados). Los cobros no se editan ni se borran: un
- * cobro equivocado se anula con motivo y el PIN de un manager (LP-10) y queda tachado en la lista.
+ * "Cobros de hoy" (solo managers): hora, líneas resumidas con sus descuentos y la propina, barbero, pago, manager
+ * e importe, con los totales del día al pie (sin los anulados) y, aparte, las propinas del día por barbero
+ * (LP-23). Los cobros no se editan ni se borran: un cobro equivocado se anula con motivo y el PIN de un manager
+ * (LP-10) y queda tachado en la lista; "+ Propina" apunta la de un cobro que no la tenía (con PIN).
  */
 export function TodaySales() {
   const { t, i18n } = useTranslation();
@@ -75,6 +85,9 @@ export function TodaySales() {
   /** Cobro y motivo a la espera del PIN. */
   const [pending, setPending] = useState<{ sale: Sale; reason: string } | null>(null);
   const [pinOpen, setPinOpen] = useState(false);
+  /** Cobro con el diálogo de la propina abierto. */
+  const [toTip, setToTip] = useState<Sale | null>(null);
+  const tips = useTipRecorder(() => undefined);
 
   const voiding = useMutation({
     mutationFn: ({ sale, reason, assertion }: VoidVariables) =>
@@ -144,8 +157,9 @@ export function TodaySales() {
                   sale={sale}
                   linesText={linesSummary(sale, catalog.data, language)}
                   locale={locale}
-                  busy={voiding.isPending}
+                  busy={voiding.isPending || tips.busy}
                   onVoid={setToVoid}
+                  onTip={setToTip}
                 />
               ))}
             </TableBody>
@@ -182,6 +196,33 @@ export function TodaySales() {
                   </span>
                 </TableCell>
               </TableRow>
+              {day.data.tips.count > 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="whitespace-normal">
+                    <span className="flex flex-wrap gap-x-6 gap-y-1">
+                      <span data-testid="today-sales-tips" className="font-medium">
+                        {t('register.today.tips', {
+                          amount: formatCents(day.data.tips.totalCents),
+                          cash: formatCents(day.data.tips.cashCents),
+                          card: formatCents(day.data.tips.cardCents),
+                        })}
+                      </span>
+                      {day.data.tips.byBarber.map((barber) => (
+                        <span
+                          key={barber.barberId}
+                          data-testid="today-sales-tips-barber"
+                          className="text-muted-foreground"
+                        >
+                          {t('register.today.tipsBarber', {
+                            name: barber.barberName,
+                            amount: formatCents(barber.totalCents),
+                          })}
+                        </span>
+                      ))}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ) : null}
             </TableFooter>
           </Table>
         ) : null}
@@ -207,6 +248,42 @@ export function TodaySales() {
           if (pending) voiding.mutate({ ...pending, assertion: result.assertion });
         }}
       />
+      <Dialog
+        open={toTip !== null}
+        onOpenChange={(open) => {
+          if (!open) setToTip(null);
+        }}
+      >
+        <DialogContent data-testid="tip-dialog" className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl font-semibold tracking-wide">
+              {t('register.tip.title', { barber: toTip?.barberName ?? '' })}
+            </DialogTitle>
+            <DialogDescription>
+              {toTip
+                ? t('register.tip.dialogFor', {
+                    total: formatCents(toTip.totalCents),
+                    lines: linesSummary(toTip, catalog.data, language),
+                  })
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+          {toTip ? (
+            <TipForm
+              sale={toTip}
+              busy={tips.busy}
+              onCancel={() => setToTip(null)}
+              onSubmit={(tip) => {
+                // Primero se cierra este diálogo y después se pide el PIN (como al anular).
+                const sale = toTip;
+                setToTip(null);
+                tips.record(sale, tip, null);
+              }}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+      <PinDialog {...tips.pinDialog} />
     </Card>
   );
 }

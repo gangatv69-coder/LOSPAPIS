@@ -5,6 +5,7 @@ import {
   type DaySales,
   daySalesSchema,
   type RecordReceiptRequest,
+  type RecordTipRequest,
   type Sale,
   saleSchema,
   type VoidSaleRequest,
@@ -59,3 +60,10 @@ export const recordReceipt = (id: string, receiptNumber: string): Promise<Sale> 
  */
 export const voidSale = (id: string, body: VoidSaleRequest): Promise<Sale> =>
   json(post(`/api/sales/${segment(id)}/void`, body), saleSchema);
+
+/**
+ * POST /api/sales/:id/tip (LP-23): la propina para el barbero del cobro, con la aserción del PIN de un manager.
+ * Fila nueva aparte del cobro. 409 tip_recorded (ya tenía), sale_voided, sale_day_closed; 401 pin_assertion_invalid.
+ */
+export const recordTip = (id: string, body: RecordTipRequest): Promise<Sale> =>
+  json(post(`/api/sales/${segment(id)}/tip`, body), saleSchema);

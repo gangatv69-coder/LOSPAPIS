@@ -81,6 +81,13 @@ describe('textos del visor de auditoría', () => {
     expect(
       detailOf({ action: 'sale.voided', before: { totalCents: 3300 }, reason: 'cobro duplicado' }),
     ).toBe('33,00 € · cobro duplicado');
+    expect(auditActionLabel('sale.tip_recorded', i18n.t)).toBe('Propina');
+    expect(
+      detailOf({
+        action: 'sale.tip_recorded',
+        after: { amountCents: 200, method: 'card', barberName: 'Barbero 1' },
+      }),
+    ).toBe('2,00 € · Tarjeta · Barbero 1');
   });
 
   it('un PIN fallido cuenta los intentos que quedan (singular y plural)', () => {

@@ -441,7 +441,30 @@
       "card": "Tarjeta {{amount}}",
       "discounts": "Descuentos: {{amount}}",
       "voidedTotals_one": "Anulados: {{count}} ({{amount}})",
-      "voidedTotals_other": "Anulados: {{count}} ({{amount}})"
+      "voidedTotals_other": "Anulados: {{count}} ({{amount}})",
+      "tipBadge": "Propina {{amount}} · {{method}}",
+      "addTip": "+ Propina",
+      "tips": "Propinas: {{amount}} (efectivo {{cash}} · tarjeta {{card}})",
+      "tipsBarber": "{{name}}: {{amount}}"
+    },
+    "tip": {
+      "title": "Propina para {{barber}}",
+      "hint": "Aparte del cobro: no va al registratore ni a los totales.",
+      "amountLabel": "Importe de la propina",
+      "change": "El vuelto: {{amount}}",
+      "other": "Otro importe",
+      "methodLabel": "Cómo llega la propina",
+      "invalid": "No se entiende el importe. Escribe por ejemplo 2 o 2,50.",
+      "tooHigh": "Como mucho {{max}} de propina.",
+      "choose": "Elige la propina",
+      "save": "Guardar propina de {{amount}}",
+      "cancel": "Cancelar",
+      "saved": "Propina de {{amount}} para {{barber}} guardada",
+      "pinFor": "Propina de {{amount}} para {{barber}}",
+      "savedLine": "Propina: {{amount}} · {{method}}",
+      "terminalBoth": "En el POS: {{amount}} (cobro + propina)",
+      "terminalTipOnly": "En el POS: {{amount}} (solo la propina)",
+      "dialogFor": "Cobro de {{total}}: {{lines}}"
     },
     "void": {
       "title": "Anular cobro de {{total}}",
@@ -469,8 +492,9 @@
       "receiptRecorded": "Este cobro ya tiene número de recibo.",
       "deviceRequired": "Para cobrar entra con tu cuenta de manager o usa un dispositivo autorizado.",
       "saleVoided": "Este cobro ya estaba anulado.",
-      "saleDayClosed": "Solo se anulan cobros de hoy. Los de otros días se corregirán en el cierre de caja.",
-      "saleNotFound": "No se encuentra ese cobro: recarga la página."
+      "saleDayClosed": "Ese cobro es de otro día: solo se tocan los cobros de hoy. Los de otros días se corregirán en el cierre de caja.",
+      "saleNotFound": "No se encuentra ese cobro: recarga la página.",
+      "tipRecorded": "Este cobro ya tiene propina."
     }
   },
   "audit": {
@@ -488,6 +512,7 @@
       "discounts": "Descuentos",
       "courtesy": "Cortes gratis",
       "voids": "Anulaciones",
+      "tips": "Propinas",
       "pin": "Fallos de PIN",
       "prices": "Cambios de precio"
     },
@@ -530,6 +555,7 @@
       "saleDiscountApplied": "Descuento",
       "saleCourtesy": "Corte gratis",
       "saleVoided": "Anulación",
+      "saleTipRecorded": "Propina",
       "serviceCreated": "Servicio creado",
       "serviceUpdated": "Servicio editado",
       "servicePriceChanged": "Cambio de precio de un servicio",

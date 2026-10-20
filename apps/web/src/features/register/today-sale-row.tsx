@@ -15,16 +15,19 @@ export type TodaySaleRowProps = {
   /** "Corte clásico ×2 · Cera mate" (linesSummary). */
   linesText: string;
   locale: string;
-  /** Mientras se anula un cobro, ningún "Anular" se puede tocar. */
+  /** Mientras se anula un cobro o se apunta una propina, ningún botón se puede tocar. */
   busy: boolean;
   onVoid: (sale: Sale) => void;
+  /** "+ Propina" (LP-23): solo en los cobros sin propina y sin anular. */
+  onTip: (sale: Sale) => void;
 };
 
 /**
- * Un cobro del día, como en el panel de la maqueta: los descuentos en un badge ("Fidelidad −10 % · Ana") y,
- * si se anuló, tachado y apagado con "Anulado · motivo · manager" (sigue en la lista, no cuenta en los totales).
+ * Un cobro del día, como en el panel de la maqueta: los descuentos en un badge ("Fidelidad −10 % · Ana"), la
+ * propina del barbero si la hay y, si se anuló, tachado y apagado con "Anulado · motivo · manager" (sigue en la
+ * lista, no cuenta en los totales).
  */
-export function TodaySaleRow({ sale, linesText, locale, busy, onVoid }: TodaySaleRowProps) {
+export function TodaySaleRow({ sale, linesText, locale, busy, onVoid, onTip }: TodaySaleRowProps) {
   const { t } = useTranslation();
   const voided = sale.voided;
   return (
@@ -50,6 +53,14 @@ export function TodaySaleRow({ sale, linesText, locale, busy, onVoid }: TodaySal
               })}
             </Badge>
           ))}
+          {sale.tip ? (
+            <Badge variant="outline" data-testid="today-sale-tip">
+              {t('register.today.tipBadge', {
+                amount: formatCents(sale.tip.amountCents),
+                method: t(`register.cart.${sale.tip.method}`),
+              })}
+            </Badge>
+          ) : null}
           {voided ? (
             <Badge
               variant="destructive"
@@ -84,17 +95,32 @@ export function TodaySaleRow({ sale, linesText, locale, busy, onVoid }: TodaySal
       </TableCell>
       <TableCell className="text-right">
         {voided ? null : (
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            className="h-12 px-3"
-            data-testid="today-sale-void"
-            disabled={busy}
-            onClick={() => onVoid(sale)}
-          >
-            {t('register.today.void')}
-          </Button>
+          <span className="flex justify-end gap-2">
+            {sale.tip ? null : (
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="h-12 px-3"
+                data-testid="today-sale-add-tip"
+                disabled={busy}
+                onClick={() => onTip(sale)}
+              >
+                {t('register.today.addTip')}
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="h-12 px-3"
+              data-testid="today-sale-void"
+              disabled={busy}
+              onClick={() => onVoid(sale)}
+            >
+              {t('register.today.void')}
+            </Button>
+          </span>
         )}
       </TableCell>
     </TableRow>

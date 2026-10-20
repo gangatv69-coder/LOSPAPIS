@@ -311,4 +311,79 @@ test.describe('cobro en la caja (iPad)', () => {
     await expect(voided.getByTestId('audit-entry-action')).toHaveText('Anulación');
     await expect(voided.getByTestId('audit-entry-detail')).toHaveText('29,70 € · prueba');
   });
+
+  // LP-23. Van al final: el cobro nuevo de "Corte clásico · Fade" no debe adelantarse al que anula la prueba de arriba.
+
+  test('propina "el vuelto" justo después de cobrar en efectivo: sin volver a pedir el PIN, el vuelto que se da baja a 0 y el registratore no cambia', async ({
+    page,
+  }) => {
+    const credentials = requireCredentials();
+    await page.goto('/caja');
+    await fillCart(page, ['Corte clásico', 'Fade']);
+    const cart = page.getByTestId('cart-panel');
+    await expect(cart.getByTestId('cart-total')).toHaveText('33,00 €');
+    await cart.getByTestId('tender-5000').click();
+    await cart.getByTestId('charge').click();
+    await signWithPin(page, credentials, 'Cobro de 33,00 €');
+
+    const done = page.getByTestId('sale-done');
+    await expect(done.getByTestId('sale-done-change')).toHaveText('17,00 €');
+    const tipSection = done.getByTestId('tip-section');
+    await expect(tipSection).toContainText('Propina para Barbero 1');
+    await tipSection.getByTestId('tip-change').tap();
+    await tipSection.getByTestId('tip-save').tap();
+    await expect(done.getByTestId('sale-done-tip')).toHaveText('Propina: 17,00 € · Efectivo');
+    // La firma del cobro valía: no se volvió a pedir el PIN.
+    await expect(page.getByTestId('pin-dialog')).toHaveCount(0);
+    await expect(done.getByTestId('sale-done-change')).toHaveCount(0);
+    await expect(done.getByTestId('sale-done-fiscal')).toHaveText(
+      'Registratore: 33,00 € · EFECTIVO',
+    );
+    await done.getByTestId('new-sale').click();
+
+    const row = page.getByTestId('today-sale').filter({ hasText: 'Corte clásico · Fade' }).first();
+    await expect(row.getByTestId('today-sale-total')).toHaveText('33,00 €');
+    await expect(row.getByTestId('today-sale-tip')).toHaveText('Propina 17,00 € · Efectivo');
+    await expect(row.getByTestId('today-sale-add-tip')).toHaveCount(0);
+    await expect(page.getByTestId('today-sales-tips')).toContainText('Propinas:');
+    await expect(
+      page.getByTestId('today-sales-tips-barber').filter({ hasText: 'Barbero 1' }),
+    ).toHaveCount(1);
+  });
+
+  test('"+ Propina" desde "Cobros de hoy": 2 € con tarjeta para el barbero de un cobro anterior, con PIN; la auditoría la lista', async ({
+    page,
+  }) => {
+    const credentials = requireCredentials();
+    await page.goto('/caja');
+    // El corte gratis de antes (12,00 € de cera) no tiene propina todavía.
+    const row = page
+      .getByTestId('today-sale')
+      .filter({ hasText: 'Corte clásico · Cera mate' })
+      .first();
+    await row.getByTestId('today-sale-add-tip').click();
+    const dialog = page.getByTestId('tip-dialog');
+    await expect(dialog).toContainText('Propina para Barbero 1');
+    await dialog.getByTestId('tip-quick-200').click();
+    await dialog.getByTestId('tip-method-card').click();
+    await dialog.getByTestId('tip-save').click();
+    await signWithPin(page, credentials, 'Propina de 2,00 € para Barbero 1');
+
+    await expect(page.getByText('Propina de 2,00 € para Barbero 1 guardada').last()).toBeVisible();
+    await expect(row.getByTestId('today-sale-tip')).toHaveText('Propina 2,00 € · Tarjeta');
+    await expect(row.getByTestId('today-sale-add-tip')).toHaveCount(0);
+    // El cobro no cambia: sigue en 12,00 €.
+    await expect(row.getByTestId('today-sale-total')).toHaveText('12,00 €');
+
+    await page.goto('/auditoria');
+    const viewer = page.getByTestId('audit-viewer');
+    await viewer.getByTestId('audit-type').selectOption('tips');
+    const entries = viewer.getByTestId('audit-entry');
+    await expect(
+      entries.filter({ hasText: '2,00 € · Tarjeta' }).first().getByTestId('audit-entry-detail'),
+    ).toHaveText('2,00 € · Tarjeta · Barbero 1');
+    await expect(
+      entries.filter({ hasText: '17,00 € · Efectivo' }).first().getByTestId('audit-entry-action'),
+    ).toHaveText('Propina');
+  });
 });

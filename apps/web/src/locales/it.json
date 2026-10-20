@@ -441,7 +441,30 @@
       "card": "Carta {{amount}}",
       "discounts": "Sconti: {{amount}}",
       "voidedTotals_one": "Stornati: {{count}} ({{amount}})",
-      "voidedTotals_other": "Stornati: {{count}} ({{amount}})"
+      "voidedTotals_other": "Stornati: {{count}} ({{amount}})",
+      "tipBadge": "Mancia {{amount}} · {{method}}",
+      "addTip": "+ Mancia",
+      "tips": "Mance: {{amount}} (contanti {{cash}} · carta {{card}})",
+      "tipsBarber": "{{name}}: {{amount}}"
+    },
+    "tip": {
+      "title": "Mancia per {{barber}}",
+      "hint": "A parte dall'incasso: non va sul registratore né nei totali.",
+      "amountLabel": "Importo della mancia",
+      "change": "Il resto: {{amount}}",
+      "other": "Altro importo",
+      "methodLabel": "Come arriva la mancia",
+      "invalid": "Importo non valido. Scrivi per esempio 2 o 2,50.",
+      "tooHigh": "Al massimo {{max}} di mancia.",
+      "choose": "Scegli la mancia",
+      "save": "Salva mancia di {{amount}}",
+      "cancel": "Annulla",
+      "saved": "Mancia di {{amount}} per {{barber}} salvata",
+      "pinFor": "Mancia di {{amount}} per {{barber}}",
+      "savedLine": "Mancia: {{amount}} · {{method}}",
+      "terminalBoth": "Sul POS: {{amount}} (incasso + mancia)",
+      "terminalTipOnly": "Sul POS: {{amount}} (solo la mancia)",
+      "dialogFor": "Incasso di {{total}}: {{lines}}"
     },
     "void": {
       "title": "Storna l'incasso di {{total}}",
@@ -469,8 +492,9 @@
       "receiptRecorded": "Questo incasso ha già un numero di scontrino.",
       "deviceRequired": "Per incassare accedi con il tuo account di manager o usa un dispositivo autorizzato.",
       "saleVoided": "Questo incasso era già stornato.",
-      "saleDayClosed": "Si stornano solo gli incassi di oggi. Quelli degli altri giorni si correggeranno nella chiusura di cassa.",
-      "saleNotFound": "Questo incasso non si trova: ricarica la pagina."
+      "saleDayClosed": "Questo incasso è di un altro giorno: si modificano solo gli incassi di oggi. Quelli degli altri giorni si correggeranno nella chiusura di cassa.",
+      "saleNotFound": "Questo incasso non si trova: ricarica la pagina.",
+      "tipRecorded": "Questo incasso ha già la mancia."
     }
   },
   "audit": {
@@ -488,6 +512,7 @@
       "discounts": "Sconti",
       "courtesy": "Tagli gratis",
       "voids": "Storni",
+      "tips": "Mance",
       "pin": "PIN sbagliati",
       "prices": "Cambi di prezzo"
     },
@@ -530,6 +555,7 @@
       "saleDiscountApplied": "Sconto",
       "saleCourtesy": "Taglio gratis",
       "saleVoided": "Storno",
+      "saleTipRecorded": "Mancia",
       "serviceCreated": "Servizio creato",
       "serviceUpdated": "Servizio modificato",
       "servicePriceChanged": "Cambio di prezzo di un servizio",

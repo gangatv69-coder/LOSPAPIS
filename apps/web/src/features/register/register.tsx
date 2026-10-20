@@ -26,6 +26,7 @@ import { isRetryableSaleError, registerErrorMessage } from '@/features/register/
 import { SaleDone } from '@/features/register/sale-done';
 import { TodaySales } from '@/features/register/today-sales';
 import { lineKey, saleRequestOf, useCart } from '@/features/register/use-cart';
+import type { PinSignature } from '@/features/register/use-tip-recorder';
 import { isApiError } from '@/lib/api-client';
 
 /**
@@ -48,6 +49,8 @@ export function Register() {
   /** Petición que falló por la red o el servidor, lista para repetirse tal cual. */
   const [retry, setRetry] = useState<CreateSaleRequest | null>(null);
   const [done, setDone] = useState<CreateSaleResponse | null>(null);
+  /** La última firma del PIN (la del cobro), para la propina de justo después. */
+  const [signature, setSignature] = useState<PinSignature | null>(null);
   const locked = busy || retry !== null;
 
   // El catálogo cambió (precio nuevo, servicio desactivado, otro idioma): el carrito se ajusta.
@@ -134,7 +137,13 @@ export function Register() {
   return (
     <div data-testid="register" className="space-y-8">
       {done ? (
-        <SaleDone sale={done.sale} idempotent={done.idempotent} onNewSale={() => setDone(null)} />
+        <SaleDone
+          sale={done.sale}
+          idempotent={done.idempotent}
+          signature={signature}
+          onSaleChange={(sale) => setDone((current) => (current ? { ...current, sale } : current))}
+          onNewSale={() => setDone(null)}
+        />
       ) : (
         // minmax(0, …): sin él la columna crece hasta el ancho natural de la rejilla del catálogo y, en el
         // móvil, la página se sale por la derecha en cuanto hay líneas en el cobro.
@@ -226,6 +235,8 @@ export function Register() {
             : t('register.pinFor', { total: formatCents(totals.totalCents) })
         }
         onVerified={(result) => {
+          // La misma firma sirve justo después para la propina del cobro (LP-23), mientras no caduque.
+          setSignature({ assertion: result.assertion, signedAt: Date.now() });
           const request = saleRequestOf(cart, result.assertion);
           if (request) void submit(request);
         }}

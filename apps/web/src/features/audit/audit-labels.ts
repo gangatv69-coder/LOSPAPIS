@@ -21,6 +21,7 @@ const ACTION_KEYS = {
   'sale.discount_applied': 'audit.actions.saleDiscountApplied',
   'sale.courtesy': 'audit.actions.saleCourtesy',
   'sale.voided': 'audit.actions.saleVoided',
+  'sale.tip_recorded': 'audit.actions.saleTipRecorded',
   'service.created': 'audit.actions.serviceCreated',
   'service.updated': 'audit.actions.serviceUpdated',
   'service.price_changed': 'audit.actions.servicePriceChanged',
@@ -159,6 +160,16 @@ export function auditDetail(entry: AuditEntry, t: TFunction): string {
     case 'sale.voided': {
       const total = numberOf(before.totalCents);
       return joined(total === null ? null : formatCents(total), reasonOf(entry));
+    }
+    case 'sale.tip_recorded': {
+      // "2,00 € · Tarjeta · Barbero 1": la propina, cómo llegó y para quién.
+      const amount = numberOf(after.amountCents);
+      const method = paymentMethodSchema.safeParse(after.method);
+      return joined(
+        amount === null ? null : formatCents(amount),
+        method.success ? t(`register.cart.${method.data}`) : null,
+        textOf(after.barberName),
+      );
     }
     case 'sale.created': {
       const total = numberOf(after.totalCents);

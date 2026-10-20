@@ -121,6 +121,7 @@ const emptyDay: DaySales = {
     voidedCount: 0,
     voidedCents: 0,
   },
+  tips: { count: 0, totalCents: 0, cashCents: 0, cardCents: 0, byBarber: [] },
 };
 
 /** Lo que guardaría la API para esa petición (precios de la base, vuelto calculado). */
@@ -168,6 +169,7 @@ function saleFor(body: CreateSaleRequest, catalogNow: Catalog = catalog): Sale {
     discounts: [],
     receiptNumber: null,
     voided: null,
+    tip: null,
   };
 }
 

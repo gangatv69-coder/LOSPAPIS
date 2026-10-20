@@ -2,9 +2,11 @@ import type { Sale } from '@los-papis/shared';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SaleDone } from '@/features/register/sale-done';
+import type { PinSignature } from '@/features/register/use-tip-recorder';
 import i18n from '@/i18n';
 import { errorResponse, jsonResponse, mockFetch } from '@/test/fetch-mock';
 
@@ -45,12 +47,28 @@ const cashSale: Sale = {
   discounts: [],
   receiptNumber: null,
   voided: null,
+  tip: null,
 };
 
 const cardSale: Sale = {
   ...cashSale,
   payment: { method: 'card', amountCents: 3800, tenderedCents: null, changeCents: null },
 };
+
+/** SaleDone con el cobro en estado, como en la caja: la propina guardada cambia lo que se ve. */
+function Harness({ initial, signature }: { initial: Sale; signature: PinSignature | null }) {
+  const [sale, setSale] = useState(initial);
+  return <SaleDone sale={sale} signature={signature} onSaleChange={setSale} onNewSale={() => {}} />;
+}
+
+function renderHarness(sale: Sale, signature: PinSignature | null) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={queryClient}>
+      <Harness initial={sale} signature={signature} />
+    </QueryClientProvider>,
+  );
+}
 
 function renderDone(sale: Sale, onNewSale = vi.fn()) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -133,6 +151,78 @@ describe('SaleDone', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Este cobro ya tiene número de recibo.',
     );
+  });
+
+  it('propina justo después de cobrar: "el vuelto" se guarda con la firma del cobro (sin volver a pedir el PIN) y el vuelto que se da baja a 0', async () => {
+    const user = userEvent.setup();
+    const tip = {
+      amountCents: 1200,
+      method: 'cash' as const,
+      barberId: B1,
+      barberName: 'Barbero 1',
+      byId: MANAGER,
+      byName: 'Manager Uno',
+      occurredAt: '2026-10-19T18:53:00+02:00',
+    };
+    const { calls } = mockFetch({
+      [`POST /api/sales/${SALE_ID}/tip`]: () => jsonResponse({ ...cashSale, tip }),
+    });
+    renderHarness(cashSale, { assertion: 'firma.del.cobro', signedAt: Date.now() });
+    expect(screen.getByTestId('tip-section')).toHaveTextContent('Propina para Barbero 1');
+
+    await user.click(screen.getByTestId('tip-change'));
+    await user.click(screen.getByTestId('tip-save'));
+
+    expect(await screen.findByTestId('sale-done-tip')).toHaveTextContent(
+      'Propina: 12,00 € · Efectivo',
+    );
+    expect(calls).toContainEqual({
+      method: 'POST',
+      path: `/api/sales/${SALE_ID}/tip`,
+      body: { amountCents: 1200, method: 'cash', pinAssertion: 'firma.del.cobro' },
+    });
+    expect(screen.queryByTestId('pin-dialog')).toBeNull();
+    expect(screen.queryByTestId('sale-done-change')).toBeNull();
+    expect(screen.queryByTestId('tip-form')).toBeNull();
+    // El registratore sigue marcando solo el cobro.
+    expect(screen.getByTestId('sale-done-fiscal')).toHaveTextContent(
+      'Registratore: 38,00 € · EFECTIVO',
+    );
+  });
+
+  it('sin firma reciente, la propina pide el PIN ("Propina de 2,00 € para Barbero 1") y no llama a la API', async () => {
+    const user = userEvent.setup();
+    const { calls } = mockFetch({
+      'GET /api/auth/managers': () => jsonResponse([]),
+    });
+    renderHarness(cardSale, { assertion: 'firma.vieja', signedAt: Date.now() - 110_000 });
+
+    await user.click(screen.getByTestId('tip-quick-200'));
+    await user.click(screen.getByTestId('tip-save'));
+
+    const dialog = await screen.findByTestId('pin-dialog');
+    expect(dialog).toHaveTextContent('Propina de 2,00 € para Barbero 1');
+    expect(calls.filter((call) => call.path.endsWith('/tip'))).toEqual([]);
+  });
+
+  it('una propina con tarjeta dice qué teclear en el POS: el cobro más la propina', () => {
+    renderDone({
+      ...cardSale,
+      tip: {
+        amountCents: 200,
+        method: 'card',
+        barberId: B1,
+        barberName: 'Barbero 1',
+        byId: MANAGER,
+        byName: 'Manager Uno',
+        occurredAt: '2026-10-19T18:53:00+02:00',
+      },
+    });
+    expect(screen.getByTestId('sale-done-tip')).toHaveTextContent('Propina: 2,00 € · Tarjeta');
+    expect(screen.getByTestId('sale-done-terminal')).toHaveTextContent(
+      'En el POS: 40,00 € (cobro + propina)',
+    );
+    expect(screen.queryByTestId('tip-form')).toBeNull();
   });
 
   it('"Nuevo cobro" avisa al padre y un cobro con recibo ya guardado no vuelve a pedirlo', async () => {
