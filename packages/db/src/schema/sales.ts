@@ -21,7 +21,7 @@ import { users } from './users.ts';
  * Cobros de la caja (LP-09): el libro del dinero, que SOLO CRECE (migración 0008: make_append_only, también
  * para el dueño de la base) y aislado por barbería. Una corrección es siempre una fila nueva (anulaciones en
  * LP-10). Los importes van en céntimos enteros (bigint) y cada cobro guarda quién lo hizo, cuándo y desde qué
- * dispositivo.
+ * dispositivo. Las propinas (LP-23) van en su propia tabla, aparte del cobro.
  */
 
 /** Mismos valores que paymentMethodSchema de @los-papis/shared (la prueba sales-tables lo comprueba). */
@@ -228,6 +228,43 @@ export const saleVoids = pgTable(
   ],
 );
 
+/**
+ * Propina de un cobro para su barbero (LP-23): fila nueva, APARTE del cobro (no cambia su total ni lo que marca el
+ * registratore), firmada por un manager con su PIN. Una por cobro (índice único).
+ */
+export const saleTips = pgTable(
+  'sale_tips',
+  {
+    id: primaryUuid(),
+    shopId: shopId(),
+    saleId: uuid()
+      .notNull()
+      .references(() => sales.id, { onDelete: 'restrict' }),
+    // El barbero del cobro, copiado al apuntarla: la propina es suya.
+    barberId: uuid()
+      .notNull()
+      .references(() => barbers.id, { onDelete: 'restrict' }),
+    amountCents: cents(),
+    method: paymentMethod().notNull(),
+    // Manager que la firmó con su PIN (de la aserción).
+    recordedByUserId: uuid()
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    deviceId: uuid().references(() => devices.id, { onDelete: 'restrict' }),
+    // Usuario de la sesión, si la había.
+    createdByUserId: uuid().references(() => users.id, { onDelete: 'restrict' }),
+    // Día de caja en el que se apuntó (el del cobro: solo se apuntan propinas de cobros del día actual).
+    cashDay: text().notNull(),
+    occurredAt: timestampTz().notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex().on(t.saleId),
+    index().on(t.shopId, t.cashDay),
+    check('sale_tips_amount_positive', sql`${t.amountCents} >= 1`),
+    check('sale_tips_cash_day_format', sql`${t.cashDay} ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'`),
+  ],
+);
+
 export type SaleRow = typeof sales.$inferSelect;
 export type NewSaleRow = typeof sales.$inferInsert;
 export type SaleLineRow = typeof saleLines.$inferSelect;
@@ -240,3 +277,5 @@ export type SaleDiscountRow = typeof saleDiscounts.$inferSelect;
 export type NewSaleDiscountRow = typeof saleDiscounts.$inferInsert;
 export type SaleVoidRow = typeof saleVoids.$inferSelect;
 export type NewSaleVoidRow = typeof saleVoids.$inferInsert;
+export type SaleTipRow = typeof saleTips.$inferSelect;
+export type NewSaleTipRow = typeof saleTips.$inferInsert;

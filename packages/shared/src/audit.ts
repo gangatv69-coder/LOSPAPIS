@@ -7,7 +7,15 @@ import { cashDaySchema } from './time.ts';
  * y días de caja, de lo más reciente a lo más antiguo, por páginas con cursor. Solo managers.
  */
 
-export const auditFilterSchema = z.enum(['all', 'discounts', 'courtesy', 'voids', 'pin', 'prices']);
+export const auditFilterSchema = z.enum([
+  'all',
+  'discounts',
+  'courtesy',
+  'voids',
+  'tips',
+  'pin',
+  'prices',
+]);
 export type AuditFilter = z.infer<typeof auditFilterSchema>;
 
 /** Acciones de audit_events que entran en cada filtro ('all' = todas). */
@@ -17,6 +25,8 @@ export const AUDIT_FILTER_ACTIONS: Readonly<
   discounts: ['sale.discount_applied'],
   courtesy: ['sale.courtesy'],
   voids: ['sale.voided'],
+  // Propinas para los barberos (LP-23).
+  tips: ['sale.tip_recorded'],
   pin: ['pin.failed', 'pin.locked', 'pin.unlocked'],
   prices: ['service.price_changed', 'product.price_changed'],
 };

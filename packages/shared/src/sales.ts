@@ -4,8 +4,8 @@ import { allocate, applyBps, assertCents, centsSchema, MAX_CENTS } from './money
 import { cashDaySchema } from './time.ts';
 
 /**
- * Cobros en la caja (LP-09) con descuentos, cortes gratis y anulaciones (LP-10). Contrato entre la API
- * (/api/sales) y la pantalla de la caja, y los cálculos puros del carrito (totales con descuentos, vuelto,
+ * Cobros en la caja (LP-09) con descuentos, cortes gratis y anulaciones (LP-10) y propinas (LP-23). Contrato entre
+ * la API (/api/sales) y la pantalla de la caja, y los cálculos puros del carrito (totales con descuentos, vuelto,
  * importes rápidos) que usan las dos partes: la pantalla para enseñar el total y el servidor para cobrarlo.
  */
 
@@ -195,6 +195,26 @@ export const saleVoidSchema = z.object({
 });
 export type SaleVoid = z.infer<typeof saleVoidSchema>;
 
+/** Tope de una propina (100 €): evita que un "500" tecleado por "5,00" acabe en el cajón de un barbero. */
+export const TIP_MAX_CENTS = 10_000;
+
+/**
+ * La propina de un cobro (LP-23), para el barbero del cobro: fila nueva aparte del cobro, que no cambia su total ni
+ * la línea del registratore. Una por cobro.
+ */
+export const saleTipSchema = z.object({
+  amountCents: centsSchema,
+  /** Cómo llegó la propina (puede no ser la forma del cobro: tarjeta para el corte y la propina en efectivo). */
+  method: paymentMethodSchema,
+  barberId: z.uuid(),
+  barberName: z.string(),
+  /** Manager que la firmó con su PIN. */
+  byId: z.uuid(),
+  byName: z.string(),
+  occurredAt: z.string(),
+});
+export type SaleTip = z.infer<typeof saleTipSchema>;
+
 export const saleSchema = z.object({
   id: z.uuid(),
   cashDay: cashDaySchema,
@@ -217,6 +237,8 @@ export const saleSchema = z.object({
   receiptNumber: z.string().nullable(),
   /** La anulación, si el cobro se anuló (sigue en el libro, pero no cuenta en los totales). */
   voided: saleVoidSchema.nullable(),
+  /** La propina para el barbero, si se apuntó (LP-23): aparte del cobro. */
+  tip: saleTipSchema.nullable(),
 });
 export type Sale = z.infer<typeof saleSchema>;
 
@@ -239,6 +261,17 @@ export const voidSaleRequestSchema = z.object({
 });
 export type VoidSaleRequest = z.infer<typeof voidSaleRequestSchema>;
 
+/**
+ * POST /api/sales/:id/tip (LP-23): la propina de un cobro del día de caja actual, firmada con el PIN de un manager
+ * (justo después de cobrar vale la misma aserción del cobro mientras no caduque).
+ */
+export const recordTipRequestSchema = z.object({
+  amountCents: z.int().min(1).max(TIP_MAX_CENTS),
+  method: paymentMethodSchema,
+  pinAssertion: z.string().min(1),
+});
+export type RecordTipRequest = z.infer<typeof recordTipRequestSchema>;
+
 export const daySalesTotalsSchema = z.object({
   /** Cobros que cuentan: los anulados NO entran en count, cashCents, cardCents, totalCents ni discountCents. */
   count: z.int().nonnegative(),
@@ -253,13 +286,85 @@ export const daySalesTotalsSchema = z.object({
 });
 export type DaySalesTotals = z.infer<typeof daySalesTotalsSchema>;
 
+/** Las propinas de un barbero en el día (LP-23): lo que hay que entregarle. */
+export const dayTipsBarberSchema = z.object({
+  barberId: z.uuid(),
+  barberName: z.string(),
+  count: z.int().nonnegative(),
+  totalCents: centsSchema,
+});
+export type DayTipsBarber = z.infer<typeof dayTipsBarberSchema>;
+
+/** Propinas del día, APARTE de los totales del cobro y sin las de cobros anulados. */
+export const dayTipsSchema = z.object({
+  count: z.int().nonnegative(),
+  totalCents: centsSchema,
+  cashCents: centsSchema,
+  cardCents: centsSchema,
+  /** Por barbero, por nombre. */
+  byBarber: z.array(dayTipsBarberSchema),
+});
+export type DayTips = z.infer<typeof dayTipsSchema>;
+
 /** GET /api/sales/day: los cobros de un día de caja (los más recientes primero, anulados incluidos) y sus totales. */
 export const daySalesSchema = z.object({
   day: cashDaySchema,
   sales: z.array(saleSchema),
   totals: daySalesTotalsSchema,
+  tips: dayTipsSchema,
 });
 export type DaySales = z.infer<typeof daySalesSchema>;
+
+/**
+ * Lo que se teclea en el TPV (LP-23): el cobro si fue con tarjeta y la propina si fue con tarjeta. null si no pasa
+ * nada por el TPV. El registratore sigue marcando solo el cobro.
+ */
+export const terminalCents = (
+  sale: Pick<Sale, 'totalCents' | 'payment' | 'tip'>,
+): number | null => {
+  const total =
+    (sale.payment.method === 'card' ? sale.totalCents : 0) +
+    (sale.tip?.method === 'card' ? sale.tip.amountCents : 0);
+  return total > 0 ? total : null;
+};
+
+/**
+ * El vuelto que se le da de verdad al cliente (LP-23): el del cobro menos la propina en efectivo que sale de él
+ * ("quédate el vuelto"), nunca negativo. null si el cobro no fue en efectivo.
+ */
+export const changeAfterTip = (sale: Pick<Sale, 'payment' | 'tip'>): number | null => {
+  const change = sale.payment.changeCents;
+  if (change === null) return null;
+  const cashTip = sale.tip?.method === 'cash' ? sale.tip.amountCents : 0;
+  return Math.max(0, change - cashTip);
+};
+
+/** Propinas de una lista de cobros, sin las de cobros anulados (LP-23). */
+export const dayTipsOf = (sales: readonly Pick<Sale, 'voided' | 'tip'>[]): DayTips => {
+  const tips: DayTips = { count: 0, totalCents: 0, cashCents: 0, cardCents: 0, byBarber: [] };
+  const byBarber = new Map<string, DayTipsBarber>();
+  for (const sale of sales) {
+    const tip = sale.tip;
+    if (!tip || sale.voided) continue;
+    tips.count += 1;
+    tips.totalCents += tip.amountCents;
+    if (tip.method === 'cash') tips.cashCents += tip.amountCents;
+    else tips.cardCents += tip.amountCents;
+    const barber = byBarber.get(tip.barberId) ?? {
+      barberId: tip.barberId,
+      barberName: tip.barberName,
+      count: 0,
+      totalCents: 0,
+    };
+    barber.count += 1;
+    barber.totalCents += tip.amountCents;
+    byBarber.set(tip.barberId, barber);
+  }
+  tips.byBarber = [...byBarber.values()].sort((a, b) =>
+    a.barberName.localeCompare(b.barberName, 'es'),
+  );
+  return tips;
+};
 
 // --- Cálculos puros del carrito ----------------------------------------------------------------
 

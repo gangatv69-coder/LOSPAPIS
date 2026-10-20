@@ -265,7 +265,8 @@ Cada ticket es una sola cosa que se puede probar por separado y trae su propio c
 - [ ] Movimientos de caja firmados con PIN, en el libro que solo crece: fondo inicial, gasto pagado del cajón (con foto y motivo), depósito en el banco y retiro del dueño.
 - [ ] Asistente de cierre como en la maqueta:
     - conteo por billetes y monedas;
-    - lo esperado se calcula como fondo + cobros en efectivo no anulados − salidas del cajón;
+    - lo esperado se calcula como fondo + cobros en efectivo no anulados + propinas en efectivo de esos cobros (LP-23) − salidas del cajón;
+    - las propinas del día se entregan a cada barbero con PIN (salida del cajón "pago de propinas"; las de tarjeta, del efectivo o como diga el commercialista);
     - el total con tarjeta se compara con el informe del POS;
     - los totales del informe Z se comparan con el sistema.
 - [ ] Regla de los 2 € (configurable). Si algo no coincide, el motivo es obligatorio.
@@ -489,6 +490,25 @@ Cada ticket es una sola cosa que se puede probar por separado y trae su propio c
 
 **Fin de la etapa 4:** el sistema queda listo para las pruebas de febrero y marzo (PRD §6).
 
+### LP-23 — Propinas para los barberos
+
+**Qué entrega:** la caja registra la propina de cada cobro para su barbero, aparte de la facturación: no entra en el total del cobro, ni en la línea del registratore, ni en los totales de lo cobrado. Al final del día se sabe cuánto le toca a cada barbero, en efectivo y con tarjeta. *Añadido el 20 de octubre de 2026 a petición del dueño; va entre LP-10 y LP-11.*
+
+**Criterios de aceptación**
+- [ ] Justo después de cobrar (pantalla del registratore) y desde "Cobros de hoy" se añade la propina de un cobro: importe (botones rápidos de 1, 2 y 5 €, otro importe y, en efectivo, "el vuelto como propina") y forma (efectivo o tarjeta; por defecto, la del cobro). Una por cobro, para el barbero del cobro.
+- [ ] La firma un manager con su PIN; justo después de cobrar vale la firma del cobro (2 minutos) y no se vuelve a pedir.
+- [ ] Fila nueva en un libro que solo crece (`sale_tips`): importe, forma, barbero, manager, dispositivo, hora y día de caja. Nunca se edita; si el cobro se anula, su propina deja de contar.
+- [ ] La propina no cambia el cobro: el registratore sigue mostrando solo el cobro. Con tarjeta, la pantalla dice qué teclear en el TPV (cobro + propina); en efectivo, el vuelto que queda.
+- [ ] "Cobros de hoy" enseña la propina de cada cobro y, aparte de los totales del cobro, las propinas del día: en efectivo, con tarjeta y por barbero.
+- [ ] Auditoría: cada propina deja su evento y el visor tiene el filtro "Propinas".
+- [ ] Solo cobros del día de caja actual, como las anulaciones (hasta el cierre de LP-11).
+- [ ] Pruebas de permisos, de una sola propina por cobro, de que nada se modifica, de que los totales del cobro no la cuentan y de que las de cobros anulados no cuentan; e2e en el iPad.
+
+**Contexto:** petición del dueño (20/10/2026) · PRD §6 (Reglas fijas: todo deja rastro) · Arquitectura §4.2 (Dinero, el libro que solo crece) · LP-09 y LP-10 (cobro, PIN y anulaciones).
+**Archivos (estimado):** `packages/shared/src/sales.ts`, `packages/db/src/schema/sales.ts` y migraciones `0011`/`0012`, `apps/api/src/sales/*`, `apps/web/src/features/register/*` (propina en el cobro hecho y en "Cobros de hoy") y `apps/web/src/features/audit/*`.
+**Tamaño:** ~1200–1500 líneas.
+**Depende de:** LP-10. **Lo usa:** LP-11 (lo esperado en efectivo suma las propinas en efectivo; el cierre entrega a cada barbero sus propinas). **Pregunta para el commercialista:** cómo se documentan y se pagan las propinas con tarjeta (el TPV cobra cobro + propina; el registratore, solo el cobro).
+
 ---
 
 ## Gráfico de dependencias
@@ -505,7 +525,8 @@ flowchart TD
   LP05 --> LP08["LP-08 Catálogo y equipo"]
   LP08 --> LP09["LP-09 Cobro en la caja"]
   LP09 --> LP10["LP-10 Descuentos y anulaciones"]
-  LP10 --> LP11["LP-11 Cierre del día"]
+  LP10 --> LP23["LP-23 Propinas"]
+  LP23 --> LP11["LP-11 Cierre del día"]
   LP11 --> LP12["LP-12 Inventario"]
   LP05 --> LP13["LP-13 App barbero e insumos"]
   LP03 --> LP13
@@ -540,7 +561,7 @@ Sigue el orden de etapas del PRD. Los tickets de una misma ola **se pueden hacer
 | 3 | LP-05 · LP-06 · LP-07 | 0 | primera semana de noviembre |
 | 4 | LP-08 | 1 | noviembre |
 | 5 | LP-09 | 1 | noviembre |
-| 6 | LP-10 | 1 | noviembre |
+| 6 | LP-10 → LP-23 (propinas, añadido a petición del dueño) | 1 | noviembre |
 | 7 | LP-11 → mini simulacro de caja | 1 | finales de noviembre |
 | 8 | LP-12 · LP-13 | 2 | principios de diciembre |
 | 9 | LP-14 | 3 | diciembre |

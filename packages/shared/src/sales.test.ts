@@ -3,14 +3,20 @@ import { describe, expect, it } from 'vitest';
 import {
   applyDiscounts,
   cartTotals,
+  changeAfterTip,
   changeFor,
   createSaleRequestSchema,
   daySalesSchema,
+  dayTipsOf,
   parsePercentBps,
   recordReceiptRequestSchema,
+  recordTipRequestSchema,
+  type Sale,
   saleDiscountInputSchema,
   saleSchema,
   suggestedTenders,
+  TIP_MAX_CENTS,
+  terminalCents,
   voidSaleRequestSchema,
 } from './sales.ts';
 
@@ -335,6 +341,7 @@ describe('respuestas', () => {
     ],
     receiptNumber: null,
     voided: null,
+    tip: null,
   };
 
   it('saleSchema valida un cobro con descuento, y uno anulado', () => {
@@ -366,11 +373,121 @@ describe('respuestas', () => {
         voidedCount: 0,
         voidedCents: 0,
       },
+      tips: { count: 0, totalCents: 0, cashCents: 0, cardCents: 0, byBarber: [] },
     });
     expect(day.totals.discountCents).toBe(180);
     expect(daySalesSchema.safeParse({ day: '2026-02-30', sales: [], totals: {} }).success).toBe(
       false,
     );
+  });
+
+  describe('propinas (LP-23)', () => {
+    const tip = {
+      amountCents: 380,
+      method: 'cash' as const,
+      barberId: OTHER,
+      barberName: 'Barbero 1',
+      byId: OTHER,
+      byName: 'Manager 1',
+      occurredAt: '2026-10-19T18:53:00+02:00',
+    };
+    const tipped: Sale = saleSchema.parse({ ...sale, tip });
+
+    it('recordTipRequestSchema: de 1 céntimo a 100 €, efectivo o tarjeta, con aserción', () => {
+      expect(
+        recordTipRequestSchema.parse({ amountCents: 200, method: 'card', pinAssertion: 'a.b' }),
+      ).toEqual({ amountCents: 200, method: 'card', pinAssertion: 'a.b' });
+      for (const amountCents of [0, -1, 1.5, TIP_MAX_CENTS + 1]) {
+        expect(
+          recordTipRequestSchema.safeParse({ amountCents, method: 'cash', pinAssertion: 'a.b' })
+            .success,
+        ).toBe(false);
+      }
+      expect(
+        recordTipRequestSchema.safeParse({ amountCents: 100, method: 'bizum', pinAssertion: 'a.b' })
+          .success,
+      ).toBe(false);
+      expect(recordTipRequestSchema.safeParse({ amountCents: 100, method: 'cash' }).success).toBe(
+        false,
+      );
+    });
+
+    it('"quédate el vuelto": el vuelto que queda es el del cobro menos la propina en efectivo', () => {
+      expect(changeAfterTip(tipped)).toBe(0);
+      expect(changeAfterTip({ ...tipped, tip: { ...tip, amountCents: 200 } })).toBe(180);
+      // Una propina en efectivo mayor que el vuelto no deja vuelto negativo; con tarjeta no toca el vuelto.
+      expect(changeAfterTip({ ...tipped, tip: { ...tip, amountCents: 500 } })).toBe(0);
+      expect(changeAfterTip({ ...tipped, tip: { ...tip, method: 'card' } })).toBe(380);
+      expect(changeAfterTip(sale as Sale)).toBe(380);
+      const card = {
+        ...tipped,
+        payment: {
+          method: 'card' as const,
+          amountCents: 1620,
+          tenderedCents: null,
+          changeCents: null,
+        },
+      };
+      expect(changeAfterTip(card)).toBeNull();
+    });
+
+    it('el TPV cobra lo que va con tarjeta: el cobro, la propina o los dos', () => {
+      const card = {
+        ...tipped,
+        payment: {
+          method: 'card' as const,
+          amountCents: 1620,
+          tenderedCents: null,
+          changeCents: null,
+        },
+      };
+      expect(terminalCents({ ...card, tip: { ...tip, method: 'card', amountCents: 200 } })).toBe(
+        1820,
+      );
+      expect(terminalCents({ ...card, tip: null })).toBe(1620);
+      expect(terminalCents({ ...card, tip })).toBe(1620);
+      expect(terminalCents({ ...tipped, tip: { ...tip, method: 'card', amountCents: 200 } })).toBe(
+        200,
+      );
+      expect(terminalCents(tipped)).toBeNull();
+    });
+
+    it('dayTipsOf: efectivo, tarjeta y por barbero, sin las de cobros anulados', () => {
+      const second = { ...tip, amountCents: 200, method: 'card' as const };
+      const otherBarber = { ...tip, amountCents: 500, barberId: THIRD, barberName: 'Ana' };
+      const voided = {
+        reason: 'duplicado',
+        byId: OTHER,
+        byName: 'Manager 1',
+        occurredAt: '2026-10-19T19:00:00+02:00',
+        cashDay: '2026-10-19',
+      };
+      expect(
+        dayTipsOf([
+          { voided: null, tip },
+          { voided: null, tip: second },
+          { voided: null, tip: otherBarber },
+          { voided, tip: { ...tip, amountCents: 900 } },
+          { voided: null, tip: null },
+        ]),
+      ).toEqual({
+        count: 3,
+        totalCents: 1080,
+        cashCents: 880,
+        cardCents: 200,
+        byBarber: [
+          { barberId: THIRD, barberName: 'Ana', count: 1, totalCents: 500 },
+          { barberId: OTHER, barberName: 'Barbero 1', count: 2, totalCents: 580 },
+        ],
+      });
+      expect(dayTipsOf([])).toEqual({
+        count: 0,
+        totalCents: 0,
+        cashCents: 0,
+        cardCents: 0,
+        byBarber: [],
+      });
+    });
   });
 
   it('el número de recibo y el motivo de una anulación se recortan y no pueden ir vacíos', () => {

@@ -13,6 +13,7 @@ export const APPEND_ONLY_TABLES = [
   'sale_receipts',
   'sale_discounts',
   'sale_voids',
+  'sale_tips',
 ] as const;
 
 /** Tablas de negocio aisladas por barbería: columna shop_id, RLS y política shop_isolation para `app`.
@@ -33,6 +34,7 @@ export const SHOP_SCOPED_TABLES = [
   'sale_receipts',
   'sale_discounts',
   'sale_voids',
+  'sale_tips',
 ] as const;
 
 /** Tablas sin shop_id: el registro de barberías. Toda tabla de `public` debe estar en una de las dos listas. */
