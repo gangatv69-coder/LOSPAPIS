@@ -242,17 +242,19 @@ Cada ticket es una sola cosa que se puede probar por separado y trae su propio c
 
 **Qué entrega:** controles para el riesgo (c), los descuentos y cortes gratis inventados. Todo se hace con PIN y motivo, y se puede ver después.
 
+**Estado: HECHO el 20 de octubre de 2026** (commits `ff22d0f` → `76c61cf` más el de cierre; plan y desviaciones en `.claude/plans/lp-10-descuentos-y-anulaciones.md`). Descuentos, cortes gratis y anulaciones como filas nuevas (`sale_discounts`, `sale_voids`) y visor de auditoría en la pestaña **Auditoría** (en italiano, **Registro**). `pnpm check` en verde (532 pruebas unitarias e integración, 33 e2e, las del cobro en el iPad) y desplegado en `https://pruebas.37-27-38-218.sslip.io`. De paso: las pestañas llevan candado mientras a la cuenta le falta un paso obligatorio (el dueño lo vio en el iPad con una cuenta nueva), la caja ya no se sale de la pantalla del móvil con un cobro a medias y un e2e comprueba que cada pestaña responde al toque en el iPad.
+
 **Criterios de aceptación**
-- [ ] Descuentos de dos tipos, "fidelidad" (por ahora manual, porque la regla está pendiente) y "manager" (importe o porcentaje). Siempre llevan motivo y PIN, y quedan en la línea con quién los autorizó.
-- [ ] Corte gratis: necesita la autorización de un manager y un motivo. Se guarda como descuento del 100% de tipo "cortesía": cuenta como corte y suma 0 €.
-- [ ] Anular un cobro pide PIN y motivo, y crea un registro de anulación. El cobro aparece como anulado en todas partes y nunca se borra.
-- [ ] Un cobro de un día ya cerrado no se anula: se corrige al día siguiente, con motivo.
-- [ ] Visor de auditoría para el manager, con filtros por tipo (descuentos, cortes gratis, anulaciones, fallos de PIN, cambios de precio), por persona y por fecha.
-- [ ] Pruebas de permisos, de que nada se modifica y de que los totales no cuentan los cobros anulados.
+- [x] Descuentos de dos tipos, "fidelidad" (por ahora manual, porque la regla está pendiente) y "manager" (importe o porcentaje). Siempre llevan motivo y PIN, y quedan en la línea con quién los autorizó. *(Un solo PIN por cobro: el de "Cobrar" autoriza también sus descuentos; ver el plan.)*
+- [x] Corte gratis: necesita la autorización de un manager y un motivo. Se guarda como descuento del 100% de tipo "cortesía": cuenta como corte y suma 0 €.
+- [x] Anular un cobro pide PIN y motivo, y crea un registro de anulación. El cobro aparece como anulado en todas partes y nunca se borra.
+- [x] Un cobro de un día ya cerrado no se anula: se corrige al día siguiente, con motivo. *(Hasta que exista el cierre de LP-11, "cerrado" = cualquier día de caja distinto del actual: 409 `sale_day_closed`. La corrección con motivo llega con los movimientos de caja de LP-11.)*
+- [x] Visor de auditoría para el manager, con filtros por tipo (descuentos, cortes gratis, anulaciones, fallos de PIN, cambios de precio), por persona y por fecha.
+- [x] Pruebas de permisos, de que nada se modifica y de que los totales no cuentan los cobros anulados.
 
 **Contexto:** PRD §6 (Reglas fijas) y §1 (fuga c) · Arquitectura §4.2 (Anulación, Auditoría) y §4.3 (las acciones sensibles piden PIN y motivo) · Maqueta (botón "Aplicar descuento" y la fila anulada del panel).
-**Archivos (estimado):** `apps/api/src/modules/sales/` (descuentos y anulaciones), `apps/api/src/modules/audit/`, `apps/web/src/features/register/` y `apps/web/src/features/audit/`.
-**Tamaño:** ~1000–1300 líneas.
+**Archivos (reales):** `packages/shared/src/{sales,audit}.ts`, `packages/db/src/schema/sales.ts` y migraciones `0009`/`0010`, `apps/api/src/sales/*`, `apps/api/src/audit/*`, `apps/api/test/sale-adjustments.test.ts`, `apps/web/src/features/register/*` (diálogos de descuento y anulación), `apps/web/src/features/audit/*`, `apps/web/src/routes/auditoria.tsx`, `apps/web/e2e/{register,navigation}.spec.ts`, `README.md`.
+**Tamaño:** ~1000–1300 líneas estimadas; reales ~5.800 añadidas sin contar los archivos generados (contrato, base, API, pantallas, pruebas y documentación).
 **Depende de:** LP-09.
 
 ### LP-11 — Movimientos de caja y cierre del día

@@ -121,3 +121,19 @@ Fase 0 (sesión principal): contrato + `applyDiscounts` con pruebas, tablas, mig
 ## AMENDMENTS
 
 - 2026-10-19 — Fase 0, contrato refinado al escribirlo: las líneas de un cobro no se repiten y hay como mucho un descuento por línea y uno para todo el cobro; las dos reglas y "la línea del descuento tiene que estar en el cobro" las valida `createSaleRequestSchema` (400 `validation`), así que no existe el código `discount_line_missing`. Nuevos en shared: `saleLineKey`, `parsePercentBps` ("10", "12,5 %" → puntos básicos) y `adjustmentReasonSchema` (motivo de descuentos y anulaciones, 1..120). El visor usa `auditEntrySchema`/`auditPageSchema` (`entries`, `nextCursor`) con `entityName` resuelto por la API (el nombre `AuditEvent` ya lo usa packages/db). Los e2e del descuento, el corte gratis, la anulación y el visor van dentro de `register.spec.ts` (iPad, en serie) para no cruzarse con su comprobación de totales del día.
+- 2026-10-20 — Ejecución: los dos agentes de las Fases 1 y 2 se pararon a medias (una interrupción de la sesión
+  principal) y no se pudieron retomar; la sesión principal terminó desde su trabajo, que estaba entero. Fase 1 casi
+  completa (faltaba una prueba más del cursor, que no se añadió: la cubren la paginación completa y el 400 del cursor
+  roto). Fase 2 sin textos: se añadieron todos en es/it, se regeneró `routeTree.gen.ts`, se pusieron al día tres
+  pruebas antiguas y se añadieron pruebas de pantalla (descuento, corte gratis, textos de auditoría) y los e2e del iPad.
+- 2026-10-20 — Vocabulario italiano: "anular" es **stornare** ("Storna", "Stornato", "Storno"), porque "Annulla" ya
+  es "Cancelar" en toda la app; la pestaña de la auditoría es **Registro**.
+- 2026-10-20 — Añadido por un aviso del dueño desde el iPad (una cuenta nueva con contraseña temporal no "dejaba
+  tocar" Caja ni Cierre): con un paso obligatorio pendiente las pestañas salen con candado y explican qué falta
+  (`pendingSetupStep()`); el botón no lleva `aria-disabled` porque sí hace algo (y Playwright no tocaría un botón
+  así). Nuevo `e2e/navigation.spec.ts`: cada pestaña responde a `tap()` en el iPad y la caja del móvil no se sale de la
+  pantalla (la rejilla de `register.tsx` necesitaba `minmax(0, 1fr)`; el fallo venía de LP-09).
+- 2026-10-20 — Revisión con capturas: la auditoría nombra también `logout`, `login.totp_pending`, `session` y
+  `backup_code`. El e2e del visor va dentro de `register.spec.ts` (iPad, en serie) y comprueba descuento, corte
+  gratis y anulación; los totales del e2e de anulación se comparan con lo de antes (los reintentos de CI repiten el
+  grupo sobre la misma base).

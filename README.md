@@ -227,6 +227,9 @@ decide):
   ninguno); las demás cuentas las crea un manager en Ajustes → Usuarios con una **contraseña temporal** que se muestra
   una sola vez y que la persona cambia al entrar. Las cuentas nunca se borran: se desactivan. Contraseñas de 10
   caracteres como mínimo, guardadas con scrypt. 10 fallos seguidos bloquean la cuenta 15 minutos.
+- **Pasos obligatorios antes de usar la app:** con la contraseña temporal sin cambiar (y, si es manager, sin la
+  verificación en dos pasos) solo se entra en Ajustes. Las demás pestañas salen con candado y, al tocarlas, un aviso dice
+  qué falta y baja hasta ese paso (`pendingSetupStep()` en `apps/web/src/features/auth/auth-guard.ts`).
 - **Managers con verificación en dos pasos obligatoria:** app de autenticación (Google Authenticator, Authy,
   1Password…) y 8 códigos de respaldo de un solo uso que se muestran una vez. Las acciones sensibles (autorizar un
   dispositivo, poner o desbloquear un PIN, crear o tocar a otro manager) exigen haber tecleado el código hace menos de
@@ -280,8 +283,8 @@ La pestaña **Caja** cobra como en la maqueta: barbero, servicios y productos de
 - **El libro solo crece:** `sales`, `sale_lines`, `sale_payments` y `sale_receipts` llevan el trigger `reject_mutation`
   (ni el dueño de la base puede editar ni borrar) y el rol `app` solo puede leer e insertar. Cada cobro guarda las
   líneas con el precio y el nombre del momento, el pago (entregado y vuelto), el barbero, el manager que firmó, el
-  dispositivo, la hora y el día de caja (`cashDay()`, hora de Roma). Anulaciones y descuentos llegan en LP-10 como filas
-  nuevas; el cierre, en LP-11.
+  dispositivo, la hora y el día de caja (`cashDay()`, hora de Roma). Los descuentos y las anulaciones (LP-10) son
+  filas nuevas en sus propias tablas; el cierre llega en LP-11.
 - **Una sola vez:** el identificador del cobro lo genera el dispositivo al empezar el carrito. Repetir la petición
   (doble toque, reintento de red) devuelve el cobro ya guardado (`idempotent: true`); el mismo identificador con otro
   contenido responde 409. Los precios los toma el servidor de la base y exige que coincidan con el total que vio el
@@ -292,6 +295,24 @@ La pestaña **Caja** cobra como en la maqueta: barbero, servicios y productos de
 - **Adaptador fiscal manual:** al terminar, la pantalla muestra en grande "Registratore: 38,00 € · EFECTIVO" para
   teclearlo en el registratore y permite guardar el número del recibo (`POST /api/sales/:id/receipt`, una sola vez).
 - Los managers ven "Cobros de hoy" bajo el cobro (`GET /api/sales/day`, también por `?day=YYYY-MM-DD`).
+
+## Descuentos, cortes gratis, anulaciones y auditoría
+
+- **Descuentos** (botón "Aplicar descuento" del cobro): de tipo fidelidad (manual hasta que exista la regla) o manager,
+  en porcentaje o en euros, sobre una línea o sobre todo el cobro, siempre con motivo. Como mucho uno por línea y uno
+  para todo el cobro. **Corte gratis** = descuento de cortesía del 100 % sobre una línea de servicio: cuenta como corte
+  y suma 0 €. El PIN con el que se cobra autoriza también los descuentos, y queda guardado quién los autorizó.
+- **Cálculo único:** `applyDiscounts()` de `packages/shared/src/sales.ts` lo usan la pantalla (para enseñar el total) y
+  el servidor (para cobrarlo): primero los descuentos de línea y después el de todo el cobro, repartido entre las líneas
+  con `allocate()` sin perder céntimos. El servidor rechaza el cobro si el total que vio el manager no coincide.
+- **Anular** ("Cobros de hoy" → "Anular"): con motivo y PIN; crea una fila en `sale_voids` (una por cobro) y el cobro
+  aparece tachado en todas partes, nunca se borra. Los totales del día no cuentan los anulados (aparecen aparte).
+  Mientras no exista el cierre (LP-11) solo se anulan cobros del día de caja actual.
+- `sale_discounts` y `sale_voids` solo crecen, como el resto del libro. Cada descuento, corte gratis y anulación deja su
+  evento en `audit_events` con el motivo.
+- **Visor de auditoría** (pestaña **Auditoría**, solo managers; `GET /api/audit`): todo lo que queda en `audit_events`,
+  con filtros por tipo (descuentos, cortes gratis, anulaciones, fallos de PIN, cambios de precio), persona y días, del
+  más reciente al más antiguo y por páginas.
 
 ## Estructura
 
