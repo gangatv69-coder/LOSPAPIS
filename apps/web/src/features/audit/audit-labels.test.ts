@@ -39,6 +39,10 @@ describe('textos del visor de auditoría', () => {
   it('nombra las acciones conocidas y enseña tal cual las que no conoce', () => {
     expect(auditActionLabel('sale.voided', i18n.t)).toBe('Anulación');
     expect(auditActionLabel('sale.courtesy', i18n.t)).toBe('Corte gratis');
+    expect(auditActionLabel('logout', i18n.t)).toBe('Salida');
+    expect(auditActionLabel('login.totp_pending', i18n.t)).toBe(
+      'Contraseña correcta: falta el código del móvil',
+    );
     expect(auditActionLabel('algo.nuevo', i18n.t)).toBe('algo.nuevo');
   });
 
@@ -48,7 +52,8 @@ describe('textos del visor de auditoría', () => {
     expect(auditActor(entry({}), i18n.t)).toBe('Sistema');
     expect(auditTarget(entry({ entityType: 'service', entityName: 'Fade' }), i18n.t)).toBe('Fade');
     expect(auditTarget(entry({ entityType: 'sale' }), i18n.t)).toBe('Cobro');
-    expect(auditTarget(entry({ entityType: 'session' }), i18n.t)).toBe('session');
+    expect(auditTarget(entry({ entityType: 'session' }), i18n.t)).toBe('Sesión');
+    expect(auditTarget(entry({ entityType: 'algo' }), i18n.t)).toBe('algo');
   });
 
   it('detalle de un cambio de precio, un descuento, un corte gratis y una anulación', () => {

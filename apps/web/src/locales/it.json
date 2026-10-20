@@ -510,7 +510,9 @@
       "product": "Prodotto",
       "barber": "Barbiere",
       "user": "Utente",
+      "session": "Sessione",
       "device": "Dispositivo",
+      "backupCode": "Codice di recupero",
       "photo": "Foto"
     },
     "detail": {
@@ -548,8 +550,10 @@
       "userDeactivated": "Utente disattivato",
       "userReactivated": "Utente riattivato",
       "loginSucceeded": "Accesso",
+      "loginTotpPending": "Password corretta: manca il codice del telefono",
       "loginFailed": "Accesso non riuscito",
       "loginLocked": "Accesso bloccato",
+      "logout": "Uscita",
       "sessionReauthenticated": "Identità confermata",
       "totpSetupStarted": "Verifica in due passaggi: configurazione avviata",
       "totpEnabled": "Verifica in due passaggi attivata",

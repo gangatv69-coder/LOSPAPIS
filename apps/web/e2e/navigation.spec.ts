@@ -32,4 +32,19 @@ test.describe('pestañas en el iPad', () => {
       await expect(link).toHaveAttribute('aria-current', 'page');
     }
   });
+
+  test('en un móvil (390 px) la caja con un cobro a medias no se sale de la pantalla', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/caja');
+    await page.locator('[data-testid="catalog-barber"][data-code="B1"]').tap();
+    await page.locator('[data-testid="catalog-service"][data-name="Corte clásico"]').tap();
+    await page.locator('[data-testid="catalog-service"][data-name="Fade"]').tap();
+    await expect(page.getByTestId('cart-total')).toHaveText('33,00 €');
+    // Con el descriptor móvil, una página más ancha que la pantalla agranda el viewport de diseño.
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      390,
+    );
+  });
 });

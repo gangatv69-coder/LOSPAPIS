@@ -136,7 +136,9 @@ export function Register() {
       {done ? (
         <SaleDone sale={done.sale} idempotent={done.idempotent} onNewSale={() => setDone(null)} />
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[1fr_minmax(22rem,26rem)] lg:items-start">
+        // minmax(0, …): sin él la columna crece hasta el ancho natural de la rejilla del catálogo y, en el
+        // móvil, la página se sale por la derecha en cuanto hay líneas en el cobro.
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,26rem)] lg:items-start">
           <div className="space-y-6">
             {catalog.isPending ? (
               <p role="status" className="text-muted-foreground">

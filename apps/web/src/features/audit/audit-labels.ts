@@ -41,8 +41,10 @@ const ACTION_KEYS = {
   'user.deactivated': 'audit.actions.userDeactivated',
   'user.reactivated': 'audit.actions.userReactivated',
   'login.succeeded': 'audit.actions.loginSucceeded',
+  'login.totp_pending': 'audit.actions.loginTotpPending',
   'login.failed': 'audit.actions.loginFailed',
   'login.locked': 'audit.actions.loginLocked',
+  logout: 'audit.actions.logout',
   'session.reauthenticated': 'audit.actions.sessionReauthenticated',
   'totp.setup_started': 'audit.actions.totpSetupStarted',
   'totp.enabled': 'audit.actions.totpEnabled',
@@ -68,7 +70,9 @@ const ENTITY_KEYS = {
   product: 'audit.entities.product',
   barber: 'audit.entities.barber',
   user: 'audit.entities.user',
+  session: 'audit.entities.session',
   device: 'audit.entities.device',
+  backup_code: 'audit.entities.backupCode',
   photo: 'audit.entities.photo',
 } as const;
 
